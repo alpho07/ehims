@@ -32,6 +32,12 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->plugins([
                 \BezhanSalleh\FilamentShield\FilamentShieldPlugin::make()
+            ]) ->navigationGroups([
+                'Client Management',
+                'Payment Management',
+                'Queue Management',
+                'Inventory Management',
+                'Admin Management',
             ])
 
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')

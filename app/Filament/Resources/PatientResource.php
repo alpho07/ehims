@@ -7,12 +7,14 @@ use App\Filament\Resources\PatientResource\RelationManagers;
 use App\Models\Patient;
 use App\Models\User;
 use App\Models\Visit;
+use Closure;
 use Filament\Forms;
 use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Notifications\Livewire\Notifications;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -21,12 +23,26 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Auth;
 
 class PatientResource extends Resource
 {
     protected static ?string $model = Patient::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-user-group';
+
+    protected static ?string $navigationLabel = 'Clients';
+
+    protected static ?string $navigationGroup = 'Client Management';
+
+    protected static ?int $navigationSort = -2;
+
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        // Check if the user has permission to view any appointments
+        return Auth::user()->can('view_any_patient');
+    }
 
     public static function form(Form $form): Form
     {
@@ -59,7 +75,13 @@ class PatientResource extends Resource
                         'Male' => 'Male',
                         'Female' => 'Female',
                         'Other' => 'Other',
-                    ])->required()
+                    ])->required(),
+                Select::make('source')
+                    ->options(['Walk-In' => 'Walk-In', 'Referral' => 'Referral'])
+                    ->reactive()
+                    ->required()
+                    ->default('Walk-In'),
+                TextInput::make('referral_facility')->visible(fn(Get $get) => $get('source') === 'Referral')->nullable()
 
             ]);
     }
@@ -72,7 +94,7 @@ class PatientResource extends Resource
                 TextColumn::make('email')->label('Email'),
                 TextColumn::make('phone')->label('Phone'),
                 TextColumn::make('hospital_number')->label('Hospital number'),
-                TextColumn::make('file_number')->label('file_number'),
+                TextColumn::make('file_number')->label('File Number'),
                 TextColumn::make('dob')->label('Date of Birth'),
                 TextColumn::make('address')->label('Address'),
                 TextColumn::make('gender')->label('gender'),
@@ -85,6 +107,9 @@ class PatientResource extends Resource
                         }
                         return null; // Return null if no dob is available
                     }),
+
+                TextColumn::make('source')->label('Source'),
+                TextColumn::make('referral_facility')->label('Referral Facility'),
             ])
 
             ->filters([

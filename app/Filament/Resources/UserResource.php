@@ -12,13 +12,24 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Auth;
 use Spatie\Permission\Models\Role;
 
 class UserResource extends Resource
 {
     protected static ?string $model = User::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-users';
+    protected static ?string $navigationGroup = 'Admin Management';
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        // Check if the user has permission to view any appointments
+        return Auth::user()->can('view_any_user');
+    }
+
+
+
 
     public static function form(Form $form): Form
     {
@@ -49,7 +60,7 @@ class UserResource extends Resource
                     ->dehydrateStateUsing(fn($state) => !empty($state) ? bcrypt($state) : null)
                     ->visible(fn($record) => $record === null), // Hide password field when editing
                 Forms\Components\Select::make('roles')
-                    // ->multiple() // Allow multiple role selection
+                    //->multiple() // Allow multiple role selection
                     ->relationship('roles', 'id') // Specify role_id as the foreign key
                     ->options(Role::all()->pluck('name', 'id')->toArray()) // Get available roles                    ->preload() // Load options in advance for smoother UI
                     ->label('Roles')
@@ -71,7 +82,7 @@ class UserResource extends Resource
     // Invoked automatically after saving
     public static function saved(User $user, array $data): void
     {
-        
+
         if (isset($data['roles'])) {
             // Convert role IDs to role names
             $roleNames = Role::whereIn('id', $data['roles'])->pluck('name')->toArray();
@@ -96,6 +107,7 @@ class UserResource extends Resource
                     ->getStateUsing(function (User $record) {
                         return $record->roles->pluck('name')->implode(', ');
                     }),
+
                 Tables\Columns\TextColumn::make('email_verified_at')
                     ->dateTime()
                     ->sortable(),

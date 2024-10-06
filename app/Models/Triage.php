@@ -9,7 +9,7 @@ class Triage extends Model
 {
     use HasFactory;
 
-    protected $with = ['consultation','bpReadings'];
+    protected $with = ['consultation', 'bpReadings'];
 
     protected $fillable = [
         'visit_id',
@@ -19,14 +19,20 @@ class Triage extends Model
         'temperature',
         'weight',
         'height',
-        'pulse',
+        'pulse_rate',
+        'blood_sugar',
         'resp',
         'bp_systolic',
         'bp_diastolic',
         'bp_status',
         'bp_time',
-        'visual_acuity',
-        'iop',
+        'distance_aided',
+        'distance_unaided',
+        'distance_pinhole',
+        'near_aided',
+        'near_unaided',
+        'iop_right',
+        'iop_left',
         'nurse_name',
         'nurse_signature'
     ];
@@ -35,7 +41,6 @@ class Triage extends Model
     {
         return $this->belongsTo(Visit::class);
     }
-
 
     public function bpReadings()
     {

@@ -16,18 +16,26 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Auth;
 
 class OrderResource extends Resource
 {
     protected static ?string $model = Order::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-document-duplicate';
+    protected static ?string $navigationGroup = 'Inventory Management';
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        // Check if the user has permission to view any appointments
+        return Auth::user()->can('view_any_order');
+    }
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Select::make('patient_id')->relationship('patient', 'first_name')->required(),
+                Select::make('patient_id')->relationship('patient', 'name')->required(),
                 Select::make('visit_id')->relationship('visit', 'id')->nullable(),
                 Select::make('orderable_id')->options([
                     'eyewear' => 'Eyewear',
@@ -47,7 +55,7 @@ class OrderResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('patient.first_name')->sortable(),
+                //TextColumn::make('patient.first_name')->sortable(),
                 TextColumn::make('orderable_id')->sortable(),
                 TextColumn::make('quantity')->sortable(),
                 TextColumn::make('status')->sortable(),

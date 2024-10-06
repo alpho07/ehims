@@ -86,4 +86,12 @@ return [
 
     'livewire_loading_delay' => 'default',
 
+    'auth' => [
+        'guard' => 'web',
+        'user' => fn() => auth()->user(),
+        'permissions' => [
+            'view' => fn($user, $model) => $user->can("view any {$model->getTable()}"),
+        ],
+    ],
+
 ];

@@ -4,14 +4,13 @@ namespace App\Filament\Resources\TriagePatientResource\Pages;
 
 use App\Filament\Resources\TriagePatientResource;
 use App\Models\Consultation;
+use App\Models\Drug;
 use App\Models\Triage;
 use App\Models\Visit;
-use Faker\Provider\HtmlLorem;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\Page;
 use Illuminate\Support\HtmlString;
-use Filament\Forms\Components\Html;
 
 class StartConsultation extends Page implements Forms\Contracts\HasForms
 {
@@ -24,6 +23,7 @@ class StartConsultation extends Page implements Forms\Contracts\HasForms
     public Visit $visit;
     public Triage $triage;
     public Consultation $consultation;
+    public Drug $drug;
 
     // Define public properties
     public $patient_name;
@@ -129,7 +129,6 @@ class StartConsultation extends Page implements Forms\Contracts\HasForms
 
             Forms\Components\Grid::make(2)
                 ->schema([
-
                     Forms\Components\Section::make('Patient Information')
                         ->schema([
                             Forms\Components\Grid::make(2) // Create a grid with 2 columns
@@ -233,9 +232,9 @@ class StartConsultation extends Page implements Forms\Contracts\HasForms
                                         ->columnSpan(1),
                                 ]),
                         ])->columnSpan(1),
+
+
                 ]),
-
-
 
         ];
     }
@@ -245,6 +244,14 @@ class StartConsultation extends Page implements Forms\Contracts\HasForms
         return $this->makeForm()
             ->schema($this->getConsultationFormSchema());
     }
+
+    public function getDrugForm(): Forms\ComponentContainer
+    {
+        return $this->makeForm()
+            ->schema($this->getDrugFormSchema());
+    }
+
+
 
     protected function getConsultationFormSchema(): array
     {
@@ -336,6 +343,7 @@ class StartConsultation extends Page implements Forms\Contracts\HasForms
                                 ])
                                 ->columnSpan(1), // Left Eye section takes 1 column
                         ]),
+
                     Forms\Components\Section::make('Consultation Details')
                         ->schema([
                             Forms\Components\Textarea::make('prescription')
@@ -348,11 +356,13 @@ class StartConsultation extends Page implements Forms\Contracts\HasForms
                                 ->rows(4),
 
                         ])
-
-
                 ]),
         ];
     }
+
+
+
+
 
     protected function rules(): array
     {
@@ -382,12 +392,14 @@ class StartConsultation extends Page implements Forms\Contracts\HasForms
 
 
         $data = $this->getConsultationForm()->getState();
+        //$data2 = $this->getDrugForm()->getState();
 
         try {
             // Create a new consultation record
             $consultation = Consultation::create([
                 'visit_id' => $this->visit->id,
                 'triage_id' => $this->triage->id,
+                'doctor_id'=>auth()->user()->id,
                 'doctors_comments' => $this->doctors_comments,
                 'prescription' => $data['prescription'],
                 // Ophthalmic Prescription data for Right Eye
@@ -419,7 +431,7 @@ class StartConsultation extends Page implements Forms\Contracts\HasForms
         } catch (\Exception $e) {
             Notification::make()
                 ->title('Error')
-                ->body('There was an issue starting the consultation. Please try again.'.$e->getMessage())
+                ->body('There was an issue starting the consultation. Please try again.' . $e->getMessage())
                 ->danger()
                 ->send();
 

@@ -12,14 +12,22 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Filament\Notifications\Notification;
 use Filament\Tables\Actions\BulkAction;
+use Illuminate\Support\Facades\Auth;
 
 class TriagePatientResource extends Resource
 {
     protected static ?string $model = Visit::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-users';
 
-    protected static ?string $navigationLabel = 'Triage Patients';
+    protected static ?string $navigationLabel = 'Client Queue';
+
+    protected static ?string $navigationGroup = 'Queue Management';
+    public static function shouldRegisterNavigation(): bool
+    {
+        // Check if the user has permission to view any appointments
+        return Auth::user()->can('view_any_triage');
+    }
 
     public static function table(Table $table): Table
     {

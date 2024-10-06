@@ -18,10 +18,17 @@ class Patient extends Model
         'dob',
         'gender',
         'phone',
+        'source',
+        'referral_facility',
     ];
 
     public function visits()
     {
         return $this->hasMany(Visit::class);
+    }
+
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
     }
 }

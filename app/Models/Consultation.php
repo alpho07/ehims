@@ -32,6 +32,14 @@ class Consultation extends Model
         'left_eye_reading_axis',
     ];
 
+    // Relationship with Drugs
+    public function drugs()
+    {
+        return $this->belongsToMany(Drug::class, 'consultation_drug')
+            ->withPivot(['dose', 'route', 'frequency', 'duration'])
+            ->withTimestamps();
+    }
+
     public function visit()
     {
         return $this->belongsTo(Visit::class);

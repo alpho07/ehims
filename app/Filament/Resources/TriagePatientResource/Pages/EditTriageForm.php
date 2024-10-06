@@ -27,14 +27,20 @@ class EditTriageForm extends Page implements Forms\Contracts\HasForms
     public $time;
     public $age;
     public $temperature;
-    public $pulse;
+    public $pulse_rate;
+    public $blood_sugar;
     public $resp;
     public $bp_systolic;
     public $bp_diastolic;
     public $bp_status;
     public $bp_time;
-    public $visual_acuity;
-    public $iop;
+    public $distance_aided;
+    public $distance_unaided;
+    public $distance_pinhole;
+    public $near_aided;
+    public $near_unaided;
+    public $iop_right;
+    public $iop_left;
     public $nurse_name;
     public $nurse_signature;
     public $weight;
@@ -50,28 +56,30 @@ class EditTriageForm extends Page implements Forms\Contracts\HasForms
         $this->hospital_number = $this->visit->patient->hospital_number;
         $this->file_number = $this->visit->patient->file_number;
 
-        $this->date = now()->toDateString();
-        $this->time = now()->format('H:i');
+        $this->date = $this->triage->date ?? now()->toDateString();
+        $this->time = $this->triage->time ?? now()->format('H:i');
         $this->age = $this->visit->patient->dob
             ? \Carbon\Carbon::parse($this->visit->patient->dob)->age
             : null;
-        $this->nurse_name = auth()->user()->name ?? '';
-
-        $this->temperature = $this->visit->triage->temperature ?? '';
-        $this->pulse = $this->visit->triage->pulse ?? '';
-        $this->resp = $this->visit->triage->resp ?? '';
-        $this->bp_systolic = $this->visit->triage->bp_systolic ?? '';
-        $this->bp_diastolic = $this->visit->triage->bp_diastolic ?? '';
-        $this->bp_status = $this->visit->triage->bp_status ?? '';
-        $this->visual_acuity = $this->visit->triage->visual_acuity ?? '';
-        $this->iop = $this->visit->triage->iop ?? '';
-        $this->bp_time = $this->visit->triage->bp_time ?? '';
-        $this->nurse_signature = $this->visit->triage->nurse_signature ?? '';
-        $this->weight = $this->visit->triage->weight ?? '';
-        $this->height = $this->visit->triage->height ?? '';
-
-
-        // Initialize other properties as needed
+        $this->temperature = $this->triage->temperature ?? '';
+        $this->pulse_rate = $this->triage->pulse_rate ?? '';
+        $this->blood_sugar = $this->triage->blood_sugar ?? '';
+        $this->resp = $this->triage->resp ?? '';
+        $this->bp_systolic = $this->triage->bp_systolic ?? '';
+        $this->bp_diastolic = $this->triage->bp_diastolic ?? '';
+        $this->bp_status = $this->triage->bp_status ?? '';
+        $this->bp_time = $this->triage->bp_time ?? '';
+        $this->distance_aided = $this->triage->distance_aided ?? '';
+        $this->distance_unaided = $this->triage->distance_unaided ?? '';
+        $this->distance_pinhole = $this->triage->distance_pinhole ?? '';
+        $this->near_aided = $this->triage->near_aided ?? '';
+        $this->near_unaided = $this->triage->near_unaided ?? '';
+        $this->iop_right = $this->triage->iop_right ?? '';
+        $this->iop_left = $this->triage->iop_left ?? '';
+        $this->nurse_name = $this->triage->nurse_name ?? auth()->user()->name ?? '';
+        $this->nurse_signature = $this->triage->nurse_signature ?? '';
+        $this->weight = $this->triage->weight ?? '';
+        $this->height = $this->triage->height ?? '';
     }
 
     protected function getFormSchema(): array
@@ -90,7 +98,6 @@ class EditTriageForm extends Page implements Forms\Contracts\HasForms
                             Forms\Components\TextInput::make('file_number')
                                 ->label('File Number')
                                 ->disabled(),
-                            // Add more patient details as needed
                         ]),
                     Forms\Components\Section::make('Triage Information')
                         ->schema([
@@ -108,12 +115,20 @@ class EditTriageForm extends Page implements Forms\Contracts\HasForms
                                 ->label('Temperature (°C)')
                                 ->numeric()
                                 ->required(),
-                            Forms\Components\TextInput::make('pulse')
-                                ->label('Pulse (bpm)')
+                            Forms\Components\TextInput::make('pulse_rate')
+                                ->label('Pulse Rate (bpm)')
                                 ->numeric()
                                 ->required(),
-                            Forms\Components\TextInput::make('resp')
-                                ->label('Respiratory Rate')
+                            Forms\Components\TextInput::make('blood_sugar')
+                                ->label('Blood Sugar (mg/dL)')
+                                ->numeric()
+                                ->required(),
+                            Forms\Components\TextInput::make('weight')
+                                ->label('Weight (kg)')
+                                ->numeric()
+                                ->required(),
+                            Forms\Components\TextInput::make('height')
+                                ->label('Height (cm)')
                                 ->numeric()
                                 ->required(),
                             Forms\Components\TextInput::make('bp_systolic')
@@ -127,28 +142,44 @@ class EditTriageForm extends Page implements Forms\Contracts\HasForms
                             Forms\Components\TextInput::make('bp_status')
                                 ->label('BP Status')
                                 ->required(),
-                            Forms\Components\TextInput::make('bp_time')
+                            Forms\Components\TimePicker::make('bp_time')
                                 ->label('BP Time')
                                 ->required(),
-                            Forms\Components\TextInput::make('visual_acuity')
-                                ->label('Visual Acuity')
-                                ->required(),
-                            Forms\Components\TextInput::make('iop')
-                                ->label('Intraocular Pressure')
-                                ->numeric()
-                                ->required(),
-                            Forms\Components\TextInput::make('weight')
-                                ->label('Weight (kg)')
-                                ->required(),
-                            Forms\Components\TextInput::make('height')
-                                ->label('Height (cm)')
-                                ->required(),
+                            Forms\Components\Fieldset::make('Visual Acuity')
+                                ->schema([
+                                    Forms\Components\TextInput::make('distance_aided')
+                                        ->label('Distance - Aided')
+                                        ->required(),
+                                    Forms\Components\TextInput::make('distance_unaided')
+                                        ->label('Distance - Unaided')
+                                        ->required(),
+                                    Forms\Components\TextInput::make('distance_pinhole')
+                                        ->label('Distance - Pinhole')
+                                        ->required(),
+                                    Forms\Components\TextInput::make('near_aided')
+                                        ->label('Near - Aided')
+                                        ->required(),
+                                    Forms\Components\TextInput::make('near_unaided')
+                                        ->label('Near - Unaided')
+                                        ->required(),
+                                ]),
+                            Forms\Components\Fieldset::make('Intraocular Pressure')
+                                ->schema([
+                                    Forms\Components\TextInput::make('iop_right')
+                                        ->label('Right Eye (mmHg)')
+                                        ->numeric()
+                                        ->required(),
+                                    Forms\Components\TextInput::make('iop_left')
+                                        ->label('Left Eye (mmHg)')
+                                        ->numeric()
+                                        ->required(),
+                                ]),
                             Forms\Components\TextInput::make('nurse_name')
                                 ->label('Nurse Name')
                                 ->required(),
                             Forms\Components\TextInput::make('nurse_signature')
                                 ->label('Nurse Signature')
-                                ->required(),
+                                ->hidden(),
                         ]),
                 ]),
         ];
@@ -162,16 +193,24 @@ class EditTriageForm extends Page implements Forms\Contracts\HasForms
             'time' => $this->time,
             'age' => $this->age,
             'temperature' => $this->temperature,
-            'pulse' => $this->pulse,
-            'resp' => $this->resp,
+            'pulse_rate' => $this->pulse_rate,
+            'blood_sugar' => $this->blood_sugar,
+            'resp' => 0,
             'bp_systolic' => $this->bp_systolic,
             'bp_diastolic' => $this->bp_diastolic,
             'bp_status' => $this->bp_status,
             'bp_time' => $this->bp_time,
-            'visual_acuity' => $this->visual_acuity,
-            'iop' => $this->iop,
+            'distance_aided' => $this->distance_aided,
+            'distance_unaided' => $this->distance_unaided,
+            'distance_pinhole' => $this->distance_pinhole,
+            'near_aided' => $this->near_aided,
+            'near_unaided' => $this->near_unaided,
+            'iop_right' => $this->iop_right,
+            'iop_left' => $this->iop_left,
             'nurse_name' => $this->nurse_name,
             'nurse_signature' => $this->nurse_signature,
+            'weight' => $this->weight,
+            'height' => $this->height,
         ]);
 
         Notification::make()
