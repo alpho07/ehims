@@ -5,9 +5,12 @@ namespace App\Filament\Resources\TriagePatientResource\Pages;
 use App\Filament\Resources\TriagePatientResource;
 use App\Models\Visit;
 use App\Models\Triage;
+use App\Models\Queue;
+use App\Models\Clinic;
 use Filament\Resources\Pages\Page;
 use Filament\Forms;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Auth;
 
 class TriageForm extends Page implements Forms\Contracts\HasForms
 {
@@ -59,7 +62,7 @@ class TriageForm extends Page implements Forms\Contracts\HasForms
         $this->age = $this->visit->patient->dob
             ? \Carbon\Carbon::parse($this->visit->patient->dob)->age
             : null;
-        $this->nurse_name = auth()->user()->name ?? '';
+        $this->nurse_name = Auth::user()->name ?? '';
     }
 
     protected function getFormSchema(): array
@@ -172,7 +175,7 @@ class TriageForm extends Page implements Forms\Contracts\HasForms
     public function submit()
     {
         // Save the triage data
-        $data = Triage::create([
+        Triage::create([
             'visit_id' => $this->visit->id,
             'date' => $this->date,
             'time' => $this->time,
@@ -198,8 +201,22 @@ class TriageForm extends Page implements Forms\Contracts\HasForms
             'height' => $this->height,
         ]);
 
-        // Optionally, update the visit status
-        $this->visit->update(['status' => 'triaged']);
+        // Update visit status to "triaged" and set clinic to Filter Clinic
+        $filterClinic = Clinic::where('name', 'Filter Clinic')->firstOrFail();
+        $this->visit->update([
+            'clinic_id' => $filterClinic->id,
+            'referred_to_id'=>$filterClinic->id,
+            'status' => 'triaged',
+        ]);
+
+        // Add patient to the Filter Clinic queue
+        Queue::create([
+            'clinic_id' => $filterClinic->id,
+            'visit_id' => $this->visit->id,
+            'patient_id' => $this->visit->patient_id,
+            'position' => Queue::where('clinic_id', $filterClinic->id)->max('position') + 1,
+            'status' => 'waiting',
+        ]);
 
         Notification::make()
             ->title('Triage information saved successfully!')

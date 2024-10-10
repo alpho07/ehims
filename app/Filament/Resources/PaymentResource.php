@@ -57,37 +57,48 @@ class PaymentResource extends Resource
                                         $set('patient_age', $patient ? \Carbon\Carbon::parse($patient->dob)->age : '');
                                         $set('patient_phone', $patient->phone ?? '');
                                         $set('patient_address', $patient->address ?? '');
-    
+
                                         // Automatically assign the latest visit
-                                       $latestVisit = $patient->visits()->latest()->first();                                       
-                                        $set('visit_id', $latestVisit ? $latestVisit->id : null);
+
+                                        $latestVisit = $patient->visits()->latest()->first();
+
+                                        if (!$latestVisit) {
+                                            // No visits found, get the last visit ID and increment it by 1
+                                            $lastVisitId = \App\Models\Visit::latest('id')->first()->id ?? 0;
+                                            $nextVisitId = $lastVisitId + 1;
+                                        } else {
+                                            // Latest visit exists
+                                            $nextVisitId = $latestVisit->id;
+                                        }
+                                        $latestVisit = $patient->visits()->latest()->first();
+                                        $set('visit_id', $latestVisit ? $latestVisit->id : $nextVisitId);
                                     }),
-    
+
                                 TextInput::make('patient_name')
                                     ->label('Name')
                                     ->disabled()
                                     ->dehydrated(false),
-    
+
                                 TextInput::make('patient_dob')
                                     ->label('Date of Birth')
                                     ->disabled()
                                     ->dehydrated(false),
-    
+
                                 TextInput::make('patient_age')
                                     ->label('Age')
                                     ->disabled()
                                     ->dehydrated(false),
-    
+
                                 TextInput::make('patient_phone')
                                     ->label('Phone Number')
                                     ->disabled()
                                     ->dehydrated(false),
-    
+
                                 TextInput::make('patient_address')
                                     ->label('Address')
                                     ->disabled()
                                     ->dehydrated(false),
-    
+
                                 // Hidden field to store the latest visit ID
                                 TextInput::make('visit_id')
                                     ->label('Visit ID')
@@ -95,7 +106,7 @@ class PaymentResource extends Resource
                                     ->required(),
                             ])
                             ->columnSpan(1),
-    
+
                         // Right side: Payment Details
                         Card::make()
                             ->schema([
@@ -112,14 +123,14 @@ class PaymentResource extends Resource
                                                 fn($state, callable $set) =>
                                                 $set('amount', PaymentItem::find($state)?->amount ?? 0)
                                             ),
-    
+
                                         TextInput::make('amount')
                                             ->label('Item Amount')
                                             ->numeric()
                                             ->required()
                                             ->readOnly()
                                             ->reactive(),
-    
+
                                         Select::make('payment_type')
                                             ->label('Payment Type')
                                             ->options([
@@ -132,7 +143,7 @@ class PaymentResource extends Resource
                                                 fn($state, callable $set, callable $get) =>
                                                 $set('total_amount', $state === 'Out of Pocket' ? $get('amount') : ($state === 'Insurance' ? $get('amount') : $get('total_amount')))
                                             ),
-    
+
                                         // Out of Pocket Payment Options
                                         Radio::make('out_of_pocket_option')
                                             ->label('Out of Pocket Option')
@@ -153,7 +164,7 @@ class PaymentResource extends Resource
                                                     default => $get('amount'),
                                                 })
                                             ),
-    
+
                                         TextInput::make('waiver_amount')
                                             ->label('Waiver Amount')
                                             ->numeric()
@@ -164,7 +175,7 @@ class PaymentResource extends Resource
                                                 fn($state, callable $set, callable $get) =>
                                                 $set('total_amount', $get('amount') - ($state ?? 0))
                                             ),
-    
+
                                         Select::make('payment_mode')
                                             ->label('Mode of Payment')
                                             ->options([
@@ -174,14 +185,14 @@ class PaymentResource extends Resource
                                             ])
                                             ->visible(fn(Forms\Get $get) => $get('payment_type') === 'Out of Pocket')
                                             ->required(),
-    
+
                                         // Insurance Payment Options
                                         Select::make('insurance_id')
                                             ->label('Insurance')
                                             ->options(Insurance::all()->pluck('name', 'id'))
                                             ->visible(fn(Forms\Get $get) => $get('payment_type') === 'Insurance')
                                             ->required(),
-    
+
                                         Radio::make('insurance_option')
                                             ->label('Insurance Option')
                                             ->options([
@@ -199,12 +210,12 @@ class PaymentResource extends Resource
                                                     default => $get('amount'),
                                                 })
                                             ),
-    
+
                                         FileUpload::make('insurance_document')
                                             ->label('Upload Scanned Insurance Document (PDF)')
                                             ->acceptedFileTypes(['application/pdf'])
                                             ->visible(fn(Forms\Get $get) => $get('payment_type') === 'Insurance'),
-    
+
                                         TextInput::make('copay_amount')
                                             ->label('Co-Pay Amount')
                                             ->numeric()
@@ -215,19 +226,19 @@ class PaymentResource extends Resource
                                                 fn($state, callable $set, callable $get) =>
                                                 $set('total_amount', $get('amount') + ($state ?? 0))
                                             ),
-    
+
                                         // Total Amount (Last Field)
                                         TextInput::make('total_amount')
                                             ->label('Total Amount')
                                             ->numeric()
                                             ->required()
                                             ->readOnly(),
-    
-                                            Toggle::make('is_paid')
+
+                                        Toggle::make('is_paid')
                                             ->label('Is Paid')
                                             ->onIcon('heroicon-s-check-circle')
                                             ->offIcon('heroicon-s-x-circle')
-                                            ->default(fn ($record) => $record ? $record->is_paid : false) // Sets default value to the saved state when editing
+                                            ->default(fn($record) => $record ? $record->is_paid : false) // Sets default value to the saved state when editing
                                             ->reactive(),
                                     ])
                                     ->minItems(1)
@@ -238,7 +249,7 @@ class PaymentResource extends Resource
                     ]),
             ]);
     }
-    
+
 
 
 

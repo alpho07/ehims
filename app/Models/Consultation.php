@@ -9,44 +9,26 @@ class Consultation extends Model
 {
     use HasFactory;
 
-
     protected $fillable = [
-        'visit_id',
-        'triage_id',
-        'doctor_id',
-        'doctors_comments',
-        'prescription',
-        // Right Eye Prescription Fields
-        'right_eye_distance_sphere',
-        'right_eye_distance_cylinder',
-        'right_eye_distance_axis',
-        'right_eye_reading_sphere',
-        'right_eye_reading_cylinder',
-        'right_eye_reading_axis',
-        // Left Eye Prescription Fields
-        'left_eye_distance_sphere',
-        'left_eye_distance_cylinder',
-        'left_eye_distance_axis',
-        'left_eye_reading_sphere',
-        'left_eye_reading_cylinder',
-        'left_eye_reading_axis',
+        'visit_id', 'clinic_id', 'form_data', 'referred_to_id','triage_id',
     ];
 
-    // Relationship with Drugs
-    public function drugs()
-    {
-        return $this->belongsToMany(Drug::class, 'consultation_drug')
-            ->withPivot(['dose', 'route', 'frequency', 'duration'])
-            ->withTimestamps();
-    }
+    protected $casts = [
+        'form_data' => 'array',
+    ];
 
     public function visit()
     {
         return $this->belongsTo(Visit::class);
     }
 
-    public function triage()
+    public function clinic()
     {
-        return $this->belongsTo(Triage::class);
+        return $this->belongsTo(Clinic::class);
+    }
+
+    public function referredTo()
+    {
+        return $this->belongsTo(Clinic::class, 'referred_to_id');
     }
 }

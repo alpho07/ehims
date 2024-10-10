@@ -56,7 +56,7 @@ class ServiceResource extends Resource
             ])
 
             ->filters([
-                Tables\Filters\SelectFilter::make('clinic')
+                /*Tables\Filters\SelectFilter::make('clinic')
                     ->label('Filter by Clinic')
                     ->options(function () {
                         // Add "All" as a default option
@@ -67,7 +67,7 @@ class ServiceResource extends Resource
                         if ($data !== 'all') {
                             $query->where('clinic_id', $data);
                         }
-                    }),
+                    }),*/
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

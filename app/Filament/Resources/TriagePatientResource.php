@@ -23,66 +23,31 @@ class TriagePatientResource extends Resource
     protected static ?string $navigationLabel = 'Client Queue';
 
     protected static ?string $navigationGroup = 'Queue Management';
+
     public static function shouldRegisterNavigation(): bool
     {
-        // Check if the user has permission to view any appointments
+        // Check if the user has permission to view any triage
         return Auth::user()->can('view_any_triage');
     }
 
-    public static function table(Table $table): Table
+    public static function table(Tables\Table $table): Table
     {
         return $table
             ->columns([
-                // Columns related to the patient
-                Tables\Columns\TextColumn::make('patient.name')
-                    ->label('Patient Name')
-                    ->sortable()
-                    ->searchable(),
-
-                Tables\Columns\TextColumn::make('patient.hospital_number')
-                    ->label('Hospital Number')
-                    ->sortable()
-                    ->searchable(),
-
-                Tables\Columns\TextColumn::make('visit_start_time')
-                    ->label('Visit Start Time')
-                    ->dateTime()
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('status')
-                    ->label('Visit Status')
-                    ->sortable()
-                    ->badge()
-                    ->colors([
-                        'success' => 'paid',
-                        'warning' => 'triaged',
-                        'danger' => 'cancelled',
-                        'primary' => 'active',
-                        'secondary' => 'completed',
-                    ])
-                    ->sortable(),
-            ])
-            ->filters([
-                // Status Filter with 'active' as default
-                Tables\Filters\SelectFilter::make('status')
-                    ->label('Visit Status')
-                    ->options([
-                        'active' => 'Active',
-                        'triaged' => 'Triaged',
-                        'paid' => 'Paid',
-                        'consultation' => 'Consultation',
-                        'completed' => 'Completed',
-                        'cancelled' => 'Cancelled',
-                    ])
-                    ->default('active')
-                    ->query(function (Builder $query, array $data) {
-                        if ($data['value']) {
-                            $query->where('status', $data['value']);
-                        }
-                    }),
+                Tables\Columns\TextColumn::make('patient.name')->label('Patient Name')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('patient.hospital_number')->label('Hospital Number')->sortable()->searchable(),
+                Tables\Columns\TextColumn::make('visit_start_time')->label('Visit Start Time')->dateTime()->sortable(),
+                Tables\Columns\TextColumn::make('status')->label('Visit Status')->sortable()->badge()->colors([
+                    'success' => 'paid',
+                    'warning' => 'triaged',
+                    'danger' => 'cancelled',
+                    'primary' => 'active',
+                    'info' => 'filter clinic',
+                    'secondary' => 'consultation',
+                    'completed' => 'completed',
+                ]),
             ])
             ->actions([
-                // Start Triage action (visible when status is 'active')
                 Action::make('start_triage')
                     ->label('Start Triage')
                     ->color('primary')
@@ -94,39 +59,23 @@ class TriagePatientResource extends Resource
                     })
                     ->visible(fn(Visit $record) => $record->status === 'active'),
 
-                // Edit Triage action (visible when status is 'triaged')
-                Action::make('edit_triage')
-                    ->label('Edit Triage')
-                    ->color('warning')
-                    ->icon('heroicon-o-pencil-square')
-                    ->action(function (Visit $record) {
-                        // Redirect to the edit triage page
-                        $url = static::getUrl('edit-triage', ['record' => $record]);
-                        return redirect($url);
-                    })
-                    ->visible(fn(Visit $record) => $record->status === 'triaged'),
-
-                // Confirm Payment action (visible when status is 'triaged')
-                Action::make('confirm_payment')
-                    ->label('Confirm Payment')
+                Action::make('complete_triage')
+                    ->label('Complete Triage')
                     ->color('success')
-                    ->icon('heroicon-o-currency-dollar')
-                    ->requiresConfirmation()
-                    ->modalHeading('Confirm Payment')
-                    ->modalSubheading('Are you sure you want to mark this Visit as paid?')
-                    ->modalButton('Yes, Confirm Payment')
+                    ->icon('heroicon-o-check-circle')
                     ->action(function (Visit $record) {
-                        $record->update(['status' => 'paid']);
+                        // Set status to "filter clinic" and move the patient
+                        $record->update(['status' => 'Filter Clinic']);
 
                         Notification::make()
-                            ->title('Payment Confirmed')
-                            ->body("Visit #{$record->id} has been marked as paid.")
+                            ->title('Triage Completed')
+                            ->body('Patient has been referred to Filter Clinic.')
                             ->success()
                             ->send();
                     })
                     ->visible(fn(Visit $record) => $record->status === 'triaged'),
 
-                // Start Consultation action (visible when status is 'paid')
+                // New Action: Open Filter Clinic Consultation Form
                 Action::make('start_consultation')
                     ->label('Start Consultation')
                     ->color('secondary')
@@ -140,60 +89,19 @@ class TriagePatientResource extends Resource
                         $url = TriagePatientResource::getUrl('consultation', ['record' => $record]);
                         return redirect($url);
                     })
-                    ->visible(fn(Visit $record) => $record->status === 'paid'),
+                    ->visible(fn(Visit $record) => $record->clinic_id == 8 || $record->clinic_id == 9 || $record->clinic_id == 10 || $record->clinic_id == 11 || $record->clinic_id == 12),  // Only show if the status is 'filter clinic'
 
-                // Start Consultation action (visible when status is 'paid')
-                Action::make('dispense_medicine')
-                ->label('Dispense')
-                ->color('success')
-                ->icon('heroicon-o-arrow-right-start-on-rectangle')
-                ->requiresConfirmation()
-                ->modalHeading('Dispense')
-                ->modalSubheading('Are you sure you want to dispense?')
-                ->modalButton('Yes, Start Dispensing')
-                ->action(function (Visit $record) {
-                    // Correctly generate the URL using the resource's getUrl method
-                    $url = TriagePatientResource::getUrl('dispense', ['record' => $record]);
-                    return redirect($url);
-                })
-                ->visible(fn(Visit $record) => $record->status === 'consultation'),
-            ])
-            ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
-
-                // Confirm Payment Bulk Action
-                /*BulkAction::make('confirm_payment_bulk')
-                    ->label('Confirm Payment')
-                    ->color('success')
-                    ->icon('heroicon-o-currency-dollar')
-                    ->requiresConfirmation()
-                    ->modalHeading('Confirm Bulk Payment')
-                    ->modalSubheading('Are you sure you want to mark the selected Visits as paid?')
-                    ->modalButton('Yes, Confirm Payment')
-                    ->action(function (Collection $records) {
-                        $records->each(function (Visit $record) {
-                            if ($record->status === 'triaged') {
-                                $record->update(['status' => 'paid']);
-                            }
-                        });
-
-                        Notification::make()
-                            ->title('Payments Confirmed')
-                            ->body('Selected visits have been marked as paid.')
-                            ->success()
-                            ->send();
-                    })
-                    ->visible(fn (Collection $records) => $records->every(fn ($record) => $record->status === 'triaged')),*/
+                // Add similar actions for other clinics as needed
             ]);
     }
-
     public static function getPages(): array
     {
         return [
             'index' => Pages\ListTriagePatients::route('/'),
-            'triage' => Pages\TriageForm::route('/{record}/triage'),
+            'triage' => Pages\TriageForm::route('/{record}/triage-form'),
             'edit-triage' => Pages\EditTriageForm::route('/{record}/edit-triage'),
-            'consultation' => Pages\StartConsultation::route('/{record}/consultation'),
+            'consultation' => ConsultationResource\Pages\DynamicConsultationForm::route('/{record}/consultation'),
+            //'filter-consultation' => Pages\FilterClinicConsultationForm::route('/{record}/filter-consultation'),
         ];
     }
 }
