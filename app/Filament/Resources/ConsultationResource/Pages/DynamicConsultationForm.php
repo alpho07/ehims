@@ -34,13 +34,15 @@ class DynamicConsultationForm extends Page implements Forms\Contracts\HasForms
         // Set initial form data if available (used when editing an existing consultation)
         $this->formData = $this->visit->consultation?->form_data ?? [];
 
-        // Assuming consultations relationship exists on the visit
+        $consultations = Consultation::where('visit_id', $this->visit->id)->get();
+
+        // Map consultations data for repeater
         $this->form->fill([
-            'previous_consultations' => $this->visit->consultations->map(function ($consultation) {
+            'previous_consultations' => $consultations->map(function ($consultation) {
                 return [
                     'clinic_name' => $consultation->clinic->name ?? 'N/A',
                     'consultation_date' => $consultation->created_at->format('Y-m-d'),
-                    'summary' => json_encode($consultation->form_data), // or process form data for display
+                    'summary' => json_encode($consultation->form_data), // or process form_data to make it readable
                 ];
             })->toArray(),
         ]);
