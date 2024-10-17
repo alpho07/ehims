@@ -5,31 +5,25 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Consultation extends Model
+class Prescription extends Model
 {
     use HasFactory;
 
-    protected $fillable = [
-        'visit_id', 'clinic_id', 'form_data', 'referred_to_id','triage_id',
-    ];
-
-    protected $casts = [
-        'form_data' => 'array',
-    ];
+    protected $fillable = ['visit_id', 'clinic_id', 'status', 'rejection_reason'];
 
     public function visit()
     {
         return $this->belongsTo(Visit::class);
     }
 
-
     public function clinic()
     {
         return $this->belongsTo(Clinic::class);
     }
 
-    public function referredTo()
+    // Retrieve prescription data from the associated consultation
+    public function getPrescriptionData()
     {
-        return $this->belongsTo(Clinic::class, 'referred_to_id');
+        return $this->visit->consultation->form_data['prescription'] ?? [];
     }
 }

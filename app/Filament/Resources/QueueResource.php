@@ -16,7 +16,7 @@ class QueueResource extends Resource
 {
     protected static ?string $model = Queue::class;
     protected static ?string $navigationIcon = 'heroicon-o-clock';
-    protected static ?string $navigationGroup = 'Client Management';
+    protected static ?string $navigationGroup = 'Others';
 
 
 

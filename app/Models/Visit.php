@@ -103,6 +103,18 @@ class Visit extends Model
         return $this->belongsTo(Clinic::class, 'clinic_id');  // Make sure the foreign key is 'clinic_id'
     }
 
+    public function prescriptions()
+    {
+        return $this->hasMany(Prescription::class);
+    }
+
+    public function getPrescriptionStatusAttribute()
+    {
+        $prescription = $this->prescriptions()->latest()->first();
+
+        return $prescription ? $prescription->status : 'No prescription';
+    }
+
 
     /**
      * Refer the patient to another clinic.

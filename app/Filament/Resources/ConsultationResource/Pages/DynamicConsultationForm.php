@@ -3,12 +3,18 @@
 namespace App\Filament\Resources\ConsultationResource\Pages;
 
 use App\Filament\Resources\ConsultationResource;
+use App\Filament\Resources\TriagePatientResource;
 use App\Models\Visit;
 use App\Models\Consultation;
 use App\Models\Clinic;
+use App\Models\Payment;
+use App\Models\Prescription;
 use App\Models\Queue;
 use Filament\Forms;
 use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Get;
 use Filament\Resources\Pages\Page;
 use Filament\Notifications\Notification;
 use Illuminate\Support\HtmlString;
@@ -21,8 +27,11 @@ class DynamicConsultationForm extends Page implements Forms\Contracts\HasForms
     protected static string $view = 'filament.resources.dynamic-consultation-form';
     protected static ?string $title = '';
 
+    protected static string $triagepatientresource = TriagePatientResource::class;
+
     public Visit $visit;
     public array $formData = []; // Holds dynamic form data
+    public  array  $previous_consultations = [];
 
     public function mount($record): void
     {
@@ -37,14 +46,17 @@ class DynamicConsultationForm extends Page implements Forms\Contracts\HasForms
         $consultations = Consultation::where('visit_id', $this->visit->id)->get();
 
         // Map consultations data for repeater
+
+        $this->previous_consultations = $consultations->map(function ($consultation) {
+            return [
+                'clinic_name' => $consultation->clinic->name ?? 'N/A1',
+                'consultation_date' => $consultation->created_at->format('Y-m-d'),
+                'summary' => json_decode(json_encode($consultation->form_data), TRUE), // or process form_data to make it readable
+            ];
+        })->toArray();
+
         $this->form->fill([
-            'previous_consultations' => $consultations->map(function ($consultation) {
-                return [
-                    'clinic_name' => $consultation->clinic->name ?? 'N/A',
-                    'consultation_date' => $consultation->created_at->format('Y-m-d'),
-                    'summary' => json_encode($consultation->form_data), // or process form_data to make it readable
-                ];
-            })->toArray(),
+            'previous_consultations' => $this->previous_consultations,  // Populate repeater
         ]);
     }
 
@@ -148,18 +160,12 @@ class DynamicConsultationForm extends Page implements Forms\Contracts\HasForms
                                             Forms\Components\Repeater::make('previous_consultations')
                                                 ->label('Previous Consultations')
                                                 ->schema([
-                                                    Forms\Components\TextInput::make('clinic_name')
-                                                        ->label('Clinic')
-                                                        ->default(fn($record) => $record->clinic->name ?? 'N/A')
-                                                        ->disabled(),
-                                                    Forms\Components\TextInput::make('consultation_date')
-                                                        ->label('Date')
-                                                        ->default(fn($item) => $item->created_at ?? 'N/A')
-                                                        ->disabled(),
-                                                    Forms\Components\Textarea::make('summary')
-                                                        ->label('Summary')
-                                                        ->default(fn($item) => $item->form_data ?? 'N/A')
-                                                        ->disabled(),
+                                                    Placeholder::make('clinic_name')
+                                                        ->content(fn($get) =>  $get('clinic_name') ?? 'N/A'),
+                                                    Placeholder::make('consultation_date')
+                                                        ->content(fn($get) =>  $get('consultation_date') ?? 'N/A'),
+                                                    Placeholder::make('summary')
+                                                        ->content(fn($get) => new HtmlString(self::renderFormDataAsList($get('summary')))),
                                                 ])
                                                 ->defaultItems(0)
                                                 ->disabled(),
@@ -175,6 +181,21 @@ class DynamicConsultationForm extends Page implements Forms\Contracts\HasForms
                 ])
         ];
     }
+
+    public static function renderFormDataAsList(array $formData): string
+    {
+        if (empty($formData)) {
+            return '<p>No data available</p>';  // Handle the case when form_data is empty
+        }
+
+        $listItems = '';
+        foreach ($formData as $key => $value) {
+            $listItems .= '<li><strong>' . ucfirst(str_replace('_', ' ', $key)) . ':</strong> ' . htmlspecialchars($value) . '</li>';
+        }
+
+        return new HtmlString('<ul>' . $listItems . '</ul>');
+    }
+
 
     protected function getFormSchemaForClinic(): array
     {
@@ -331,9 +352,7 @@ class DynamicConsultationForm extends Page implements Forms\Contracts\HasForms
     protected function getRefractionClinicForm(): array
     {
         return [
-            Forms\Components\Textarea::make('formData.history_of_clinics')
-                ->label('History of Clinics Visited')
-                ->required(),
+
             Forms\Components\Textarea::make('formData.objective_refraction')
                 ->label('Objective Refraction')
                 ->required(),
@@ -350,6 +369,73 @@ class DynamicConsultationForm extends Page implements Forms\Contracts\HasForms
                 ->required(),
             Forms\Components\Textarea::make('formData.referral')
                 ->label('Referrals to Other Clinics'),
+            Forms\Components\Card::make()
+                ->schema([
+                    Forms\Components\Section::make('Prescription')
+                        ->schema([
+
+                            // Distance Prescription for Each Eye
+                            Forms\Components\Fieldset::make('Distance Prescription')
+                                ->schema([
+                                    // Right Eye Fields
+                                    Forms\Components\TextInput::make('formData.prescription.distance.right.sphere')
+                                        ->label('Right Eye Sphere')
+                                        ->numeric()
+                                        ->required(),
+                                    Forms\Components\TextInput::make('formData.prescription.distance.right.cylinder')
+                                        ->label('Right Eye Cylinder')
+                                        ->numeric()
+                                        ->required(),
+                                    Forms\Components\TextInput::make('formData.prescription.distance.right.axis')
+                                        ->label('Right Eye Axis')
+                                        ->numeric()
+                                        ->required(),
+
+                                    // Left Eye Fields
+                                    Forms\Components\TextInput::make('formData.prescription.distance.left.sphere')
+                                        ->label('Left Eye Sphere')
+                                        ->numeric()
+                                        ->required(),
+                                    Forms\Components\TextInput::make('formData.prescription.distance.left.cylinder')
+                                        ->label('Left Eye Cylinder')
+                                        ->numeric()
+                                        ->required(),
+                                    Forms\Components\TextInput::make('formData.prescription.distance.left.axis')
+                                        ->label('Left Eye Axis')
+                                        ->numeric()
+                                        ->required(),
+                                ]),
+
+                            // Near Prescription
+                            Forms\Components\Fieldset::make('Near Prescription')
+                                ->schema([
+                                    Forms\Components\TextInput::make('formData.prescription.near.add')
+                                        ->label('Add (Near)')
+                                        ->numeric()
+                                        ->required(),
+                                    Forms\Components\TextInput::make('formData.prescription.near.sphere')
+                                        ->label('Sphere (Near)')
+                                        ->numeric()
+                                        ->required(),
+                                ]),
+
+                            // Additional Prescription Details
+                            Forms\Components\TextInput::make('formData.prescription.pupillary_distance')
+                                ->label('Pupillary Distance (PD)')
+                                ->numeric()
+                                ->required(),
+
+                            Forms\Components\TextInput::make('formData.prescription.height')
+                                ->label('Height')
+                                ->numeric()
+                                ->required(),
+
+                            Forms\Components\TextInput::make('formData.prescription.frame_code')
+                                ->label('Frame Code')
+                                ->required(),
+
+                        ]),
+                ])
         ];
     }
 
@@ -361,11 +447,27 @@ class DynamicConsultationForm extends Page implements Forms\Contracts\HasForms
 
     public function submit()
     {
+        // Check if the required payment for 'payment_item_id' 3 (Refraction Clinic) is done
+        $paymentExists = Payment::where('visit_id', $this->visit->id)
+            ->whereHas('paymentDetails', function ($query) {
+                $query->where('payment_item_id', 3);  // Payment item for Refraction Clinic
+            })
+            //->where('is_paid', true)  // Ensure the payment status is 'paid'
+            ->exists();
+
+        // If payment is not made, show a notification and block submission
+        if (!$paymentExists) {
+            Notification::make()
+                ->title('Payment Required')
+                ->body('Payment for Refraction services is required before proceeding!. Please ask the patient to make a payment and try again.')
+                ->warning()
+                ->send();
+
+            return;  // Stop submission if payment is not made
+        }
 
         // Extract the referred_to_id from the formData
         $referredToId = $this->formData['referred_to_id'] ?? null;
-
-
 
         // Save the dynamic form data as JSON
         Consultation::create([
@@ -377,13 +479,29 @@ class DynamicConsultationForm extends Page implements Forms\Contracts\HasForms
             'reason_for_referral' => $this->formData['reason_for_referral'] ?? null,
         ]);
 
+
+
+        // Get the referred clinic if the referral was made
         $filterClinic = Clinic::where('id', $referredToId)->firstOrFail();
+
+        if ($this->visit->clinic_id === 12) {
+            Prescription::create([
+                'visit_id' => $this->visit->id,
+                'clinic_id' => $this->visit->clinic_id,
+                'status' => 'pending', // Initially set as pending
+            ]);
+        }
+
+
+
+        // Update the visit status to reflect the referral and the clinic
         $this->visit->update([
             'clinic_id' => $filterClinic->id,
             'referred_to_id' => $filterClinic->id,
-            'status' => $filterClinic->name,
+            'status' => $filterClinic->name,  // You can also set a specific status string
         ]);
 
+        // Add the patient to the queue for the referred clinic
         Queue::create([
             'clinic_id' => $filterClinic->id,
             'visit_id' => $this->visit->id,
@@ -392,13 +510,13 @@ class DynamicConsultationForm extends Page implements Forms\Contracts\HasForms
             'status' => 'waiting',
         ]);
 
-
-
+        // Notify the user that the consultation was completed and the patient referred
         Notification::make()
             ->title('Consultation completed and patient referred.')
             ->success()
             ->send();
 
-        return redirect(static::getResource()::getUrl('index'));
+        // Redirect back to the resource's index page
+        return redirect(static::$triagepatientresource::getUrl('index'));
     }
 }

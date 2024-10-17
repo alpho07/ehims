@@ -89,15 +89,40 @@ class PatientResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+        
             ->columns([
-                TextColumn::make('name')->label('Patient Name'),
-                TextColumn::make('email')->label('Email'),
-                TextColumn::make('phone')->label('Phone'),
-                TextColumn::make('hospital_number')->label('Hospital number'),
-                TextColumn::make('file_number')->label('File Number'),
-                TextColumn::make('dob')->label('Date of Birth'),
-                TextColumn::make('address')->label('Address'),
-                TextColumn::make('gender')->label('gender'),
+                TextColumn::make('name')
+                    ->label('Patient Name')
+                    ->searchable()
+                    ->sortable(), // Make the 'name' column searchable
+                TextColumn::make('email')
+                    ->label('Email')
+                    ->searchable()
+                    ->sortable(), // Make the 'email' column searchable
+                TextColumn::make('phone')
+                    ->label('Phone')
+                    ->searchable()
+                    ->sortable(), // Make the 'phone' column searchable
+                TextColumn::make('hospital_number')
+                    ->label('Hospital number')
+                    ->searchable()
+                    ->sortable(), // Make the 'hospital_number' column searchable
+                TextColumn::make('file_number')
+                    ->label('File Number')
+                    ->searchable()
+                    ->sortable(), // Make the 'file_number' column searchable
+                TextColumn::make('dob')
+                    ->label('Date of Birth')
+                    ->searchable()
+                    ->sortable(), // Make the 'dob' column searchable
+                TextColumn::make('address')
+                    ->label('Address')
+                    ->searchable()
+                    ->sortable(), // Make the 'address' column searchable
+                TextColumn::make('gender')
+                    ->label('Gender')
+                    ->searchable()
+                    ->sortable(), // Make the 'gender' column searchable
                 TextColumn::make('age')
                     ->label('Age (Years)')
                     ->getStateUsing(function ($record) {
@@ -106,12 +131,16 @@ class PatientResource extends Resource
                             return \Carbon\Carbon::parse($record->dob)->age;
                         }
                         return null; // Return null if no dob is available
-                    }),
-
-                TextColumn::make('source')->label('Source'),
-                TextColumn::make('referral_facility')->label('Referral Facility'),
+                    }) ->sortable(),
+                TextColumn::make('source')
+                    ->label('Source')
+                    ->searchable()
+                    ->sortable(), // Make the 'source' column searchable
+                TextColumn::make('referral_facility')
+                    ->label('Referral Facility')
+                    ->searchable()
+                    ->sortable(), // Make the 'referral_facility' column searchable
             ])
-
             ->filters([
                 //
             ])
@@ -162,13 +191,13 @@ class PatientResource extends Resource
                     ->visible(fn($record) => \App\Models\Visit::where('patient_id', $record->id)->where('status', 'active')->exists()), // Only show if an active visit exists
 
             ])
-
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
     }
+
 
     public static function getRelations(): array
     {

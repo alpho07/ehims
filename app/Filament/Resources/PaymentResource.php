@@ -256,6 +256,7 @@ class PaymentResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->defaultSort('created_at', 'desc')
             ->columns([
                 // Patient Information
                 TextColumn::make('patient.hospital_number')

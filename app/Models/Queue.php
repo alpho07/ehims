@@ -49,4 +49,10 @@ class Queue extends Model
     {
         return $this->belongsTo(Clinic::class, 'referred_from_id');
     }
+
+
+    public function updateVisitStatus($nextClinicId = null)
+    {
+        $this->visit->referToClinic($nextClinicId);
+    }
 }
