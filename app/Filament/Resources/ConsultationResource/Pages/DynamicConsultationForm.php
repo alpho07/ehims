@@ -488,6 +488,7 @@ class DynamicConsultationForm extends Page implements Forms\Contracts\HasForms
             Prescription::create([
                 'visit_id' => $this->visit->id,
                 'clinic_id' => $this->visit->clinic_id,
+                'consultation_id' => $this->visit->consultation->id,
                 'status' => 'pending', // Initially set as pending
             ]);
         }
