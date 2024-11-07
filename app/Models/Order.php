@@ -1,35 +1,26 @@
 <?php
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-class Order extends Model
+class Order extends BaseModel
 {
-    protected $fillable = [
-        'patient_id',
-        'visit_id',
-        'orderable_id',
-        'orderable_type',
-        'quantity',
-        'status',
-        'order_date',
-        'delivery_date',
-    ];
+    use HasFactory;
 
-    public function patient()
+    protected $fillable = ['facility_id', 'month', 'year'];
+
+    public function orderItems()
     {
-        return $this->belongsTo(Patient::class);
+        return $this->hasMany(OrderItem::class);
     }
 
-    public function visit()
+
+    public static function orderExists($facilityId, $month, $year): bool
     {
-        return $this->belongsTo(Visit::class);
+        return Order::where('facility_id', $facilityId)
+            ->where('month', $month)
+            ->where('year', $year)
+            ->exists();
     }
 
-    public function orderable()
-    {
-        return $this->morphTo();
-    }
 }

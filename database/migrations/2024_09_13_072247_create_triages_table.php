@@ -36,6 +36,8 @@ return new class extends Migration
             $table->decimal('iop_left', 5, 2);  // Intraocular pressure (left eye)
             $table->string('nurse_name')->nullable();
             $table->string('nurse_signature')->nullable();
+            $table->integer('facility_id')->nullable();
+            $table->foreign('facility_id')->references('id')->on('facilities')->onDelete('cascade');
             $table->timestamps();
         });
     }

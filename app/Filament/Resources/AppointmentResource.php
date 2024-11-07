@@ -53,32 +53,9 @@ class AppointmentResource extends Resource
                 // Select Service (Filtered by the day of the week and getting service type name)
                 Forms\Components\Select::make('service_type_id')
                     ->label('Service')
-                    ->options(function (callable $get) {
-                        $dayOfWeek = $get('day_of_week');
-                        if ($dayOfWeek) {
-                            return Service::whereHas('clinic', function ($query) use ($dayOfWeek) {
-                                $query->where('day', $dayOfWeek); // Filter clinics by the day
-                            })
-                                ->with('serviceType')  // Eager load the service type
-                                ->get()
-                                ->pluck('serviceType.name', 'serviceType.id');  // Use the serviceType.name as the option
-                        }
-                        return [];
-                    })
-                    ->searchable()
+                    ->options(Clinic::pluck('name','id')->toArray())
                     ->required()
-                    ->disabled(fn(callable $get) => !$get('appointment_date'))  // Disable if no date is selected
-                    ->afterStateUpdated(function ($state, callable $set) {
-                        if (!$state) {
-                            Notification::make()
-                                ->title('Please select an appointment date first.')
-                                ->danger()
-                                ->send();
-                        }
-
-                        // $dayOfWeek = Carbon::parse($state)->format('l');  // Get the day of the week
-                        //$set('day_of_week', $dayOfWeek);  // Set the day of the week
-                    }),
+                    ->searchable(),
 
                 Forms\Components\Select::make('appointment_time')
                     ->label('Appointment Time')
@@ -108,13 +85,13 @@ class AppointmentResource extends Resource
 
 
                 // Hidden field for storing the day of the week
-                Forms\Components\Hidden::make('day_of_week'),
+                //Forms\Components\Hidden::make('day_of_week'),
 
 
 
 
                 // Show assigned doctor (based on the selected service's clinic)
-                Forms\Components\TextInput::make('doctor_info')
+                /*Forms\Components\TextInput::make('doctor_info')
                     ->label('Assigned Doctor')
                     ->disabled()
                     ->reactive()
@@ -125,7 +102,7 @@ class AppointmentResource extends Resource
                         } else {
                             $set('doctor_info', 'No doctor assigned');
                         }
-                    }),
+                    }),*/
 
             ]);
     }

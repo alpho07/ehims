@@ -3,9 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-class PaymentDetail extends Model
+class PaymentDetail extends BaseModel
 {
     use HasFactory;
 
@@ -15,6 +14,7 @@ class PaymentDetail extends Model
         'amount',
         'payment_type',
         'payment_mode',
+        'payment_reference',
         'insurance_id',
         'is_copay',
         'waiver_amount',

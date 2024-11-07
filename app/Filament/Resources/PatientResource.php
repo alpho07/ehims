@@ -81,15 +81,46 @@ class PatientResource extends Resource
                     ->reactive()
                     ->required()
                     ->default('Walk-In'),
-                TextInput::make('referral_facility')->visible(fn(Get $get) => $get('source') === 'Referral')->nullable()
+
+                // The searchable referral facility dropdown
+                Select::make('referral_facility')
+                    ->label('Referral Facility')
+                    ->relationship('facility', 'facility_name', function (Builder $query, string $search) {
+                        // Manually apply the search logic to prevent Filament's automatic search condition
+                        $query->where(function (Builder $query) use ($search) {
+                            $query->where('facility_name', 'like', "%{$search}%")
+                                ->orWhere('mfl_code', 'like', "%{$search}%");
+                        });
+                    })
+                    ->getSearchResultsUsing(function (string $search) {
+                        return \App\Models\Facility::query()
+                            ->select('id', 'facility_name', 'mfl_code')
+                            ->where('facility_name', 'like', "%{$search}%")
+                            ->orWhere('mfl_code', 'like', "%{$search}%")
+                            ->limit(50)
+                            ->get()
+                            ->pluck('facility_name', 'id')
+                            ->map(function ($facility_name, $id) {
+                                $facility = \App\Models\Facility::find($id);
+                                return $facility ? $facility_name . ' (' . $facility->mfl_code . ')' : '';
+                            });
+                    })
+                    ->searchable() // Keep the searchable flag for the UI
+                    ->getOptionLabelUsing(function ($value) {
+                        $facility = \App\Models\Facility::find($value);
+                        return $facility ? $facility->facility_name . ' (' . $facility->mfl_code . ')' : '';
+                    })
+                    ->visible(fn(Get $get) => $get('source') === 'Referral')
+                    ->nullable()
 
             ]);
     }
 
+
     public static function table(Table $table): Table
     {
         return $table
-        
+
             ->columns([
                 TextColumn::make('name')
                     ->label('Patient Name')
@@ -131,12 +162,12 @@ class PatientResource extends Resource
                             return \Carbon\Carbon::parse($record->dob)->age;
                         }
                         return null; // Return null if no dob is available
-                    }) ->sortable(),
+                    })->sortable(),
                 TextColumn::make('source')
                     ->label('Source')
                     ->searchable()
                     ->sortable(), // Make the 'source' column searchable
-                TextColumn::make('referral_facility')
+                TextColumn::make('facility.facility_name')
                     ->label('Referral Facility')
                     ->searchable()
                     ->sortable(), // Make the 'referral_facility' column searchable

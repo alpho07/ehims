@@ -24,11 +24,11 @@ class TriagePatientResource extends Resource
 
     protected static ?string $navigationGroup = 'Queue Management';
 
-    public static function shouldRegisterNavigation(): bool
+    /*public static function shouldRegisterNavigation(): bool
     {
         // Check if the user has permission to view any triage
         return Auth::user()->can('view_any_triage');
-    }
+    }*/
 
     public static function table(Tables\Table $table): Table
 {
@@ -102,7 +102,7 @@ class TriagePatientResource extends Resource
                     $url = TriagePatientResource::getUrl('consultation', ['record' => $record]);
                     return redirect($url);
                 })
-                ->visible(fn(Visit $record) => $record->clinic_id == 8 || $record->clinic_id == 9 || $record->clinic_id == 10 || $record->clinic_id == 11 || $record->clinic_id == 12),  // Only show after triage is completed
+                ->visible(fn(Visit $record) => $record->clinic_id == 8 || $record->clinic_id == 9 || $record->clinic_id == 10 || $record->clinic_id == 11 || $record->clinic_id >= 12 ),  // Only show after triage is completed
         ]);
 }
 

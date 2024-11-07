@@ -16,6 +16,7 @@ use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Support\HtmlString;
 use App\Helpers\OlistHelper;
+use Filament\Forms\Components\Textarea;
 use Nette\Utils\Html;
 
 class ViewPrescription extends Page implements Forms\Contracts\HasForms
@@ -28,6 +29,9 @@ class ViewPrescription extends Page implements Forms\Contracts\HasForms
     public Visit $visit;
     public array $formData = []; // To store dynamic form data
     public array $previousConsultations = [];
+    public $showRejectionModal = false;
+    public $rejectionReason = '';
+    public $status = '';
 
     public function mount($record): void
     {
@@ -35,6 +39,10 @@ class ViewPrescription extends Page implements Forms\Contracts\HasForms
         $this->prescription = Prescription::with('visit')->findOrFail($record);
 
         $this->visit = $this->prescription->visit;
+
+        $this->status = $this->prescription->status;
+
+
 
         // Get previous consultations (if any)
         $this->previousConsultations = Consultation::where('visit_id', $this->visit->id)->get()->map(function ($consultation) {
@@ -59,6 +67,7 @@ class ViewPrescription extends Page implements Forms\Contracts\HasForms
 
         // Load the formData for the prescription
         $this->formData = $this->visit->consultation->form_data ?? [];
+
 
 
         $this->form->fill([
@@ -125,7 +134,7 @@ class ViewPrescription extends Page implements Forms\Contracts\HasForms
                                                     Placeholder::make('consultation_date')
                                                         ->content(fn($get) => $get('consultation_date')),
                                                     Placeholder::make('summary')
-                                                       ->content(fn($get) => new HtmlString(OlistHelper::renderFormDataAsList($get('summary')))),
+                                                        ->content(fn($get) => new HtmlString(OlistHelper::renderFormDataAsList($get('summary')))),
                                                 ])
                                                 ->defaultItems(0)
                                                 ->disabled(),
@@ -241,31 +250,57 @@ class ViewPrescription extends Page implements Forms\Contracts\HasForms
         ];
     }
 
-    public function approvePrescription()
+
+    protected function getActions(): array
     {
-        $this->prescription->update(['status' => 'approved']);
+        return [
+            Action::make('approve_prescription')
+                ->label('Approve Prescription')
+                ->color('success')
+                ->requiresConfirmation()
+                ->modalHeading('Approve Prescription')
+                ->modalSubheading('Are you sure you want to approve this prescription?')
+                ->modalButton('Yes, Approve')
+                ->action(function () {
+                    $this->prescription->update(['status' => 'approved']);
 
-        Notification::make()
-            ->title('Prescription Approved')
-            ->success()
-            ->send();
+                    Notification::make()
+                        ->title('Prescription Approved')
+                        ->success()
+                        ->send();
 
-        return redirect(static::getResource()::getUrl('index'));
-    }
+                    return redirect(static::getResource()::getUrl('index'));
+                })
+                ->hidden(fn() => $this->prescription->status === 'approved' || $this->prescription->status === 'rejected'),
 
-    public function rejectPrescription()
-    {
-        // Rejecting the prescription
-        $this->prescription->update([
-            'status' => 'rejected',
-            'rejection_reason' => 'Rejection Reason Here', // Add rejection reason in practice
-        ]);
+            Action::make('reject_prescription')
+                ->label('Reject Prescription')
+                ->color('danger')
+                ->requiresConfirmation()
+                ->modalHeading('Reject Prescription')
+                ->modalSubheading('Please provide a reason for rejecting this prescription.')
+                ->form([
+                    Forms\Components\Textarea::make('rejection_reason')
+                        ->label('Rejection Reason')
+                        ->required(),
+                ])
+                ->action(function (array $data) {
+                    $this->prescription->update([
+                        'status' => 'rejected',
+                        'rejection_reason' => $data['rejection_reason'],
+                    ]);
 
-        Notification::make()
-            ->title('Prescription Rejected')
-            ->warning()
-            ->send();
+                    
 
-        return redirect(static::getResource()::getUrl('index'));
+                    Notification::make()
+                        ->title('Prescription Rejected')
+                        ->body('Prescription has been rejected with a reason provided.')
+                        ->success()
+                        ->send();
+
+                    return redirect(static::getResource()::getUrl('index'));
+                })
+                ->hidden(fn() => $this->prescription->status === 'approved' || $this->prescription->status === 'rejected'),
+        ];
     }
 }

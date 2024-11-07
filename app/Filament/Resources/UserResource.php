@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
 use App\Filament\Resources\UserResource\RelationManagers;
+use App\Models\Facility;
 use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -69,6 +70,11 @@ class UserResource extends Resource
                             ? $record->roles->pluck('id')->toArray() // Load role IDs for editing
                             : []
                     ),
+                Forms\Components\Select::make('facility_id')
+                    ->label('Facility')
+                    ->options(Facility::pluck('facility_name', 'id'))
+                    ->searchable()
+                    ->required(),
 
             ]);
     }
@@ -108,17 +114,13 @@ class UserResource extends Resource
                         return $record->roles->pluck('name')->implode(', ');
                     }),
 
-                Tables\Columns\TextColumn::make('email_verified_at')
-                    ->dateTime()
-                    ->sortable(),
+                    Tables\Columns\TextColumn::make('facility.facility_name')->label('Facility'),
+
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+
             ])
             ->filters([
                 //

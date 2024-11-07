@@ -21,8 +21,10 @@ return new class extends Migration
             $table->date('dob')->nullable(); // Date of birth for calculating age
             $table->string('gender');
             $table->string('phone')->nullable();
-            $table->enum('source', ['Walk-In', 'Appointment', 'Referral']);
+            $table->enum('source', ['Walk-In', 'Referral']);
             $table->string('referral_facility')->nullable();
+            $table->integer('facility_id')->nullable();
+            $table->foreign('facility_id')->references('id')->on('facilities')->onDelete('cascade');
             $table->timestamps();
         });
     }

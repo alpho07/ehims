@@ -26,4 +26,9 @@ class Appointment extends Model
     {
         return $this->belongsTo(Clinic::class);
     }
+
+    public function ServiceType()
+    {
+        return $this->belongsTo(ServiceType::class);
+    }
 }

@@ -2,13 +2,13 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-class Visit extends Model
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+
+
+class Visit extends BaseModel
 {
     use HasFactory;
-
     // Automatically load relationships when querying the visit model
     protected $with = ['patient', 'triage'];
 
@@ -152,5 +152,10 @@ class Visit extends Model
             'status' => 'waiting',
             'referred_from_id' => $this->referred_from_id ?? $this->clinic_id,
         ]);
+    }
+
+    public function facility()
+    {
+        return $this->belongsTo(Facility::class);
     }
 }

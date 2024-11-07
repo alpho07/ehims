@@ -37,26 +37,42 @@ class DynamicConsultationForm extends Page implements Forms\Contracts\HasForms
     {
         $this->visit = Visit::with('clinic', 'patient')->findOrFail($record);
 
-        //dd($this->visit);
-
         $this::$title = "Consultation for " . $this->visit->patient->name . ' > '  . $this->visit->clinic->name;
-        // Set initial form data if available (used when editing an existing consultation)
         $this->formData = $this->visit->consultation?->form_data ?? [];
 
         $consultations = Consultation::where('visit_id', $this->visit->id)->get();
 
-        // Map consultations data for repeater
-
         $this->previous_consultations = $consultations->map(function ($consultation) {
+            $formData = json_decode(json_encode($consultation->form_data), true);
+
+            if (isset($formData['prescription'])) {
+                unset($formData['prescription']);
+            }
+
             return [
-                'clinic_name' => $consultation->clinic->name ?? 'N/A1',
+                'clinic_name' => $consultation->clinic->name ?? 'N/A',
                 'consultation_date' => $consultation->created_at->format('Y-m-d'),
-                'summary' => json_decode(json_encode($consultation->form_data), TRUE), // or process form_data to make it readable
+                'summary' => $formData,
             ];
         })->toArray();
 
+        // Check if clinic ID is >= 12 (Refraction Clinic)
+        if ($this->visit->clinic->id >= 12) {
+            // Fetch the refraction-specific consultation data
+            $refractionConsultation = Consultation::where('visit_id', $this->visit->id)
+                ->where('clinic_id', 12)
+                ->first();
+
+            if ($refractionConsultation) {
+                $this->formData = $refractionConsultation->form_data;
+                $this->formData['prescription'] = $refractionConsultation->form_data['prescription'];
+            }
+        }
+        // dd($this->formData);
+
         $this->form->fill([
-            'previous_consultations' => $this->previous_consultations,  // Populate repeater
+            'previous_consultations' => $this->previous_consultations,
+            'formData' => $this->formData,
         ]);
     }
 
@@ -65,12 +81,10 @@ class DynamicConsultationForm extends Page implements Forms\Contracts\HasForms
         return [
             Grid::make(2)
                 ->schema([
-                    // Left Column: Tabs for Patient Info, Triage Info, and Consultation History
                     Forms\Components\Card::make()
                         ->schema([
                             Forms\Components\Tabs::make('Patient Information')
                                 ->tabs([
-                                    // Patient Information Tab
                                     Forms\Components\Tabs\Tab::make('Patient Information')
                                         ->schema([
                                             Forms\Components\Placeholder::make('')
@@ -85,17 +99,15 @@ class DynamicConsultationForm extends Page implements Forms\Contracts\HasForms
                                                 ->content('File Number: ' . $this->visit->patient->file_number)
                                                 ->columnSpan(1),
 
-
                                             Forms\Components\Placeholder::make('')
                                                 ->content('Date of Birth: ' . $this->visit->patient->dob ?? '')
                                                 ->columnSpan(1),
 
-
                                             Forms\Components\Placeholder::make('')
                                                 ->content('Age: ' . \Carbon\Carbon::parse($this->visit->patient->dob)->age . ' Years')
                                                 ->columnSpan(1)
-
                                         ]),
+
 
                                     // Triage Information Tab
                                     Forms\Components\Tabs\Tab::make('Triage Information')
@@ -154,7 +166,6 @@ class DynamicConsultationForm extends Page implements Forms\Contracts\HasForms
 
                                         ]),
 
-                                    // Consultation History Tab
                                     Forms\Components\Tabs\Tab::make('Consultation History')
                                         ->schema([
                                             Forms\Components\Repeater::make('previous_consultations')
@@ -174,7 +185,6 @@ class DynamicConsultationForm extends Page implements Forms\Contracts\HasForms
                         ])
                         ->columnSpan(1),
 
-                    // Right Column: Current Dynamic Form
                     Forms\Components\Card::make()
                         ->schema($this->getFormSchemaForClinic())
                         ->columnSpan(1),
@@ -185,7 +195,7 @@ class DynamicConsultationForm extends Page implements Forms\Contracts\HasForms
     public static function renderFormDataAsList(array $formData): string
     {
         if (empty($formData)) {
-            return '<p>No data available</p>';  // Handle the case when form_data is empty
+            return '<p>No data available</p>';
         }
 
         $listItems = '';
@@ -196,28 +206,28 @@ class DynamicConsultationForm extends Page implements Forms\Contracts\HasForms
         return new HtmlString('<ul>' . $listItems . '</ul>');
     }
 
-
     protected function getFormSchemaForClinic(): array
     {
-        // Dynamically return the form schema based on the current clinic
         $clinic = $this->visit->clinic->id ?? null;
+
+        if ($clinic >= 12) {
+            return $this->getRefractionClinicForm($clinic);
+        }
 
         return match ($clinic) {
             8 => $this->getFilterClinicForm(),
             9 => $this->getLowVisionClinicForm(),
             10 => $this->getAnteriorSegmentClinicForm(),
             11 => $this->getVitroRetinalClinicForm(),
-            12 => $this->getRefractionClinicForm(),
             default => [],
         };
     }
 
-
-
-
     // Filter Clinic Form Schema
     protected function getFilterClinicForm(): array
     {
+        $currentClinicId = $this->visit->clinic_id;  // Get the current clinic ID
+
         return [
             Forms\Components\Textarea::make('formData.complaints')
                 ->label('Complaints')
@@ -237,20 +247,44 @@ class DynamicConsultationForm extends Page implements Forms\Contracts\HasForms
             Forms\Components\Textarea::make('formData.management')
                 ->label('Management')
                 ->required(),
+
             Forms\Components\Select::make('formData.referred_to_id')
                 ->label('Refer to Clinic')
-                ->options(Clinic::all()->pluck('name', 'id'))
+                ->options(
+                    Clinic::all()->pluck('name', 'id')->filter(function ($name, $id) use ($currentClinicId) {
+                        // Exclude current clinic
+                        if ($id === $currentClinicId) {
+                            return false;
+                        }
+                        // Exclude clinics with 'hub' unless current clinic is Refraction Clinic (ID 12)
+                        if (str_contains(strtolower($name), 'hub') && $currentClinicId !== 12) {
+                            return false;
+                        }
+                        return true;
+                    })
+                )
                 ->nullable()
-                ->required(),
+                ->required()
+                ->afterStateHydrated(function ($set, $get) use ($currentClinicId) {
+                    // If the current clinic is Refraction Clinic, add "Hub" option
+                    if ($currentClinicId >= 12) {
+                        $set('formData.referred_to_id', array_merge(
+                            $get('formData.referred_to_id', []),
+                            ['Hub' => 'Hub']
+                        ));
+                    }
+                }),
+
             Forms\Components\Textarea::make('formData.reason_for_referral')
                 ->label('Reason for Referral')
                 ->required(),
         ];
     }
 
-    // Low Vision Clinic Form Schema
     protected function getLowVisionClinicForm(): array
     {
+        $currentClinicId = $this->visit->clinic_id;  // Get the current clinic ID
+
         return [
             Forms\Components\Textarea::make('formData.complaints')
                 ->label('Complaints')
@@ -276,20 +310,41 @@ class DynamicConsultationForm extends Page implements Forms\Contracts\HasForms
             Forms\Components\Textarea::make('formData.management')
                 ->label('Management')
                 ->required(),
+
             Forms\Components\Select::make('formData.referred_to_id')
                 ->label('Refer to Clinic')
-                ->options(Clinic::all()->pluck('name', 'id'))
+                ->options(
+                    Clinic::all()->pluck('name', 'id')->filter(function ($name, $id) use ($currentClinicId) {
+                        if ($id === $currentClinicId) {
+                            return false;
+                        }
+                        if (str_contains(strtolower($name), 'hub') && $currentClinicId !== 12) {
+                            return false;
+                        }
+                        return true;
+                    })
+                )
                 ->nullable()
-                ->required(),
+                ->required()
+                ->afterStateHydrated(function ($set, $get) use ($currentClinicId) {
+                    if ($currentClinicId == 12) {
+                        $set('formData.referred_to_id', array_merge(
+                            $get('formData.referred_to_id', []),
+                            ['Hub' => 'Hub']
+                        ));
+                    }
+                }),
+
             Forms\Components\DatePicker::make('formData.tca')
                 ->label('TCA (Next Appointment)')
                 ->required(),
         ];
     }
 
-    // Anterior Segment Clinic Form Schema
     protected function getAnteriorSegmentClinicForm(): array
     {
+        $currentClinicId = $this->visit->clinic_id;
+
         return [
             Forms\Components\Textarea::make('formData.complaints')
                 ->label('Complaints')
@@ -309,19 +364,41 @@ class DynamicConsultationForm extends Page implements Forms\Contracts\HasForms
             Forms\Components\Textarea::make('formData.management')
                 ->label('Management')
                 ->required(),
+
             Forms\Components\Select::make('formData.referred_to_id')
                 ->label('Refer to Clinic')
-                ->options(Clinic::all()->pluck('name', 'id'))
+                ->options(
+                    Clinic::all()->pluck('name', 'id')->filter(function ($name, $id) use ($currentClinicId) {
+                        if ($id === $currentClinicId) {
+                            return false;
+                        }
+                        if (str_contains(strtolower($name), 'hub') && $currentClinicId !== 12) {
+                            return false;
+                        }
+                        return true;
+                    })
+                )
                 ->nullable()
-                ->required(),
+                ->required()
+                ->afterStateHydrated(function ($set, $get) use ($currentClinicId) {
+                    if ($currentClinicId == 12) {
+                        $set('formData.referred_to_id', array_merge(
+                            $get('formData.referred_to_id', []),
+                            ['Hub' => 'Hub']
+                        ));
+                    }
+                }),
+
             Forms\Components\Textarea::make('formData.reason_for_referral')
-                ->label('Reason for Referral'),
+                ->label('Reason for Referral')
+                ->required(),
         ];
     }
 
-    // Vitro Retinal Clinic Form Schema
     protected function getVitroRetinalClinicForm(): array
     {
+        $currentClinicId = $this->visit->clinic_id;
+
         return [
             Forms\Components\Textarea::make('formData.complaints')
                 ->label('Complaints')
@@ -338,170 +415,195 @@ class DynamicConsultationForm extends Page implements Forms\Contracts\HasForms
             Forms\Components\Textarea::make('formData.management')
                 ->label('Management')
                 ->required(),
+
             Forms\Components\Select::make('formData.referred_to_id')
                 ->label('Refer to Clinic')
-                ->options(Clinic::all()->pluck('name', 'id'))
+                ->options(
+                    Clinic::all()->pluck('name', 'id')->filter(function ($name, $id) use ($currentClinicId) {
+                        if ($id === $currentClinicId) {
+                            return false;
+                        }
+                        if (str_contains(strtolower($name), 'hub') && $currentClinicId !== 12) {
+                            return false;
+                        }
+                        return true;
+                    })
+                )
                 ->nullable()
-                ->required(),
+                ->required()
+                ->afterStateHydrated(function ($set, $get) use ($currentClinicId) {
+                    if ($currentClinicId == 12) {
+                        $set('formData.referred_to_id', array_merge(
+                            $get('formData.referred_to_id', []),
+                            ['Hub' => 'Hub']
+                        ));
+                    }
+                }),
+
             Forms\Components\Textarea::make('formData.reason_for_referral')
-                ->label('Reason for Referral'),
+                ->label('Reason for Referral')
+                ->required(),
         ];
     }
 
-    // Refraction Clinic Form Schema
-    protected function getRefractionClinicForm(): array
+    protected function getRefractionClinicForm($clinic): array
     {
-        return [
+        $currentClinicId = $clinic;
 
+        return [
             Forms\Components\Textarea::make('formData.objective_refraction')
                 ->label('Objective Refraction')
+                ->default($this->formData['objective_refraction'] ?? '')
                 ->required(),
             Forms\Components\Textarea::make('formData.subjective_refraction')
                 ->label('Subjective Refraction')
+                ->default($this->formData['subjective_refraction'] ?? '')
                 ->required(),
             Forms\Components\Textarea::make('formData.recommendations')
                 ->label('Recommendations')
+                ->default($this->formData['recommendations'] ?? '')
                 ->required(),
+
             Forms\Components\Select::make('formData.referred_to_id')
                 ->label('Refer to Clinic')
-                ->options(Clinic::all()->pluck('name', 'id'))
+                ->options(
+                    Clinic::all()->pluck('name', 'id')->filter(function ($name, $id) use ($currentClinicId) {
+                        if ($id === $currentClinicId) {
+                            return false;
+                        }
+                        if (str_contains(strtolower($name), 'hub') && $currentClinicId > 12) {
+                            return false;
+                        }
+                        return true;
+                    })
+                )
                 ->nullable()
-                ->required(),
+                ->required()
+                ->default($this->formData['referred_to_id'] ?? null),
+
             Forms\Components\Textarea::make('formData.referral')
                 ->label('Referrals to Other Clinics'),
+
             Forms\Components\Card::make()
                 ->schema([
                     Forms\Components\Section::make('Prescription')
                         ->schema([
-
-                            // Distance Prescription for Each Eye
                             Forms\Components\Fieldset::make('Distance Prescription')
                                 ->schema([
-                                    // Right Eye Fields
                                     Forms\Components\TextInput::make('formData.prescription.distance.right.sphere')
                                         ->label('Right Eye Sphere')
+                                        ->default($this->formData['prescription']['distance']['right']['sphere'] ?? 12)
                                         ->numeric()
                                         ->required(),
                                     Forms\Components\TextInput::make('formData.prescription.distance.right.cylinder')
                                         ->label('Right Eye Cylinder')
+                                        ->default($this->formData['prescription']['distance']['right']['cylinder'] ?? '')
                                         ->numeric()
                                         ->required(),
                                     Forms\Components\TextInput::make('formData.prescription.distance.right.axis')
                                         ->label('Right Eye Axis')
+                                        ->default($this->formData['prescription']['distance']['right']['axis'] ?? '')
                                         ->numeric()
                                         ->required(),
 
-                                    // Left Eye Fields
                                     Forms\Components\TextInput::make('formData.prescription.distance.left.sphere')
                                         ->label('Left Eye Sphere')
+                                        ->default($this->formData['prescription']['distance']['left']['sphere'] ?? '')
                                         ->numeric()
                                         ->required(),
                                     Forms\Components\TextInput::make('formData.prescription.distance.left.cylinder')
                                         ->label('Left Eye Cylinder')
+                                        ->default($this->formData['prescription']['distance']['left']['cylinder'] ?? '')
                                         ->numeric()
                                         ->required(),
                                     Forms\Components\TextInput::make('formData.prescription.distance.left.axis')
                                         ->label('Left Eye Axis')
+                                        ->default($this->formData['prescription']['distance']['left']['axis'] ?? '')
                                         ->numeric()
                                         ->required(),
                                 ]),
 
-                            // Near Prescription
                             Forms\Components\Fieldset::make('Near Prescription')
                                 ->schema([
                                     Forms\Components\TextInput::make('formData.prescription.near.add')
                                         ->label('Add (Near)')
+                                        ->default($this->formData['prescription']['near']['add'] ?? '12')
                                         ->numeric()
                                         ->required(),
                                     Forms\Components\TextInput::make('formData.prescription.near.sphere')
                                         ->label('Sphere (Near)')
+                                        ->default($this->formData['prescription']['near']['sphere'] ?? '')
                                         ->numeric()
                                         ->required(),
                                 ]),
 
-                            // Additional Prescription Details
                             Forms\Components\TextInput::make('formData.prescription.pupillary_distance')
                                 ->label('Pupillary Distance (PD)')
+                                ->default($this->formData['prescription']['pupillary_distance'] ?? '')
                                 ->numeric()
                                 ->required(),
-
                             Forms\Components\TextInput::make('formData.prescription.height')
                                 ->label('Height')
+                                ->default($this->formData['prescription']['height'] ?? '')
                                 ->numeric()
                                 ->required(),
-
                             Forms\Components\TextInput::make('formData.prescription.frame_code')
                                 ->label('Frame Code')
+                                ->default($this->formData['prescription']['frame_code'] ?? '')
                                 ->required(),
-
                         ]),
-                ])
+                ]),
         ];
     }
 
-
-
-    // Dynamically set the title based on clinic and patient name
-
-
-
     public function submit()
     {
-        // Check if the required payment for 'payment_item_id' 3 (Refraction Clinic) is done
-        $paymentExists = Payment::where('visit_id', $this->visit->id)
-            ->whereHas('paymentDetails', function ($query) {
-                $query->where('payment_item_id', 3);  // Payment item for Refraction Clinic
-            })
-            //->where('is_paid', true)  // Ensure the payment status is 'paid'
-            ->exists();
-
-        // If payment is not made, show a notification and block submission
-        if (!$paymentExists) {
-            Notification::make()
-                ->title('Payment Required')
-                ->body('Payment for Refraction services is required before proceeding!. Please ask the patient to make a payment and try again.')
-                ->warning()
-                ->send();
-
-            return;  // Stop submission if payment is not made
-        }
-
-        // Extract the referred_to_id from the formData
         $referredToId = $this->formData['referred_to_id'] ?? null;
 
-        // Save the dynamic form data as JSON
+        if ($referredToId == 12) {
+            $paymentExists = Payment::where('visit_id', $this->visit->id)
+                ->whereHas('paymentDetails', function ($query) {
+                    $query->where('payment_item_id', 3);  // Payment item for Refraction Clinic
+                })
+                ->exists();
+
+            if (!$paymentExists) {
+                Notification::make()
+                    ->title('Payment Required')
+                    ->body('Payment for Refraction services is required before proceeding! Please ask the patient to make a payment and try again.')
+                    ->warning()
+                    ->send();
+
+                return;
+            }
+        }
+
         Consultation::create([
             'visit_id' => $this->visit->id,
             'clinic_id' => $this->visit->clinic_id,
             'triage_id' => $this->visit->triage->id,
-            'form_data' => $this->formData, // Save dynamic form data as JSON
-            'referred_to_id' => $this->formData['referred_to_id'] ?? null, // Extract the referred clinic ID
+            'form_data' => $this->formData,
+            'referred_to_id' => $this->formData['referred_to_id'] ?? null,
             'reason_for_referral' => $this->formData['reason_for_referral'] ?? null,
         ]);
 
-
-
-        // Get the referred clinic if the referral was made
         $filterClinic = Clinic::where('id', $referredToId)->firstOrFail();
 
         if ($this->visit->clinic_id === 12) {
             Prescription::create([
                 'visit_id' => $this->visit->id,
                 'clinic_id' => $this->visit->clinic_id,
-                'status' => 'pending', // Initially set as pending
+                'consultation_id' => $this->visit->consultation->id,
+                'status' => 'pending',
             ]);
         }
 
-
-
-        // Update the visit status to reflect the referral and the clinic
         $this->visit->update([
             'clinic_id' => $filterClinic->id,
             'referred_to_id' => $filterClinic->id,
-            'status' => $filterClinic->name,  // You can also set a specific status string
+            'status' => $filterClinic->name,
         ]);
 
-        // Add the patient to the queue for the referred clinic
         Queue::create([
             'clinic_id' => $filterClinic->id,
             'visit_id' => $this->visit->id,
@@ -510,13 +612,11 @@ class DynamicConsultationForm extends Page implements Forms\Contracts\HasForms
             'status' => 'waiting',
         ]);
 
-        // Notify the user that the consultation was completed and the patient referred
         Notification::make()
             ->title('Consultation completed and patient referred.')
             ->success()
             ->send();
 
-        // Redirect back to the resource's index page
         return redirect(static::$triagepatientresource::getUrl('index'));
     }
 }

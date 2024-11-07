@@ -184,7 +184,14 @@ class PaymentResource extends Resource
                                                 'Mobile Money' => 'Mobile Money',
                                             ])
                                             ->visible(fn(Forms\Get $get) => $get('payment_type') === 'Out of Pocket')
+                                            ->reactive()
                                             ->required(),
+
+                                        TextInput::make('payment_reference')
+                                            ->label('Reference Number')
+                                            ->required()
+                                            ->visible(fn(Forms\Get $get) => $get('payment_mode') === 'Card' || $get('payment_mode') === 'Mobile Money'),
+
 
                                         // Insurance Payment Options
                                         Select::make('insurance_id')
@@ -329,6 +336,13 @@ class PaymentResource extends Resource
                     ->label('Payment Mode')
                     ->getStateUsing(function ($record) {
                         return $record->paymentDetails->pluck('payment_mode') ?? 'N/A';
+                    })
+                    ->sortable(),
+
+                TextColumn::make('payment_reference')
+                    ->label('Payment Mode')
+                    ->getStateUsing(function ($record) {
+                        return $record->paymentDetails->pluck('payment_reference') ?? 'N/A';
                     })
                     ->sortable(),
                 // ->visible(fn($record) => $record && $record->payment_type === 'Out of Pocket'),

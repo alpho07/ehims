@@ -47,6 +47,9 @@ class CreateVisitsTable extends Migration
             $table->json('previous_clinics')->nullable();
             $table->json('staff_seen')->nullable();
 
+            $table->integer('facility_id')->nullable();
+            $table->foreign('facility_id')->references('id')->on('facilities')->onDelete('cascade');
+
             $table->timestamps();
         });
     }

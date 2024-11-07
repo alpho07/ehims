@@ -13,9 +13,17 @@ return new class extends Migration
     {
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('patient_id')->constrained('patients')->onDelete('cascade');
-            $table->boolean('is_paid')->default(false);
-            $table->foreignId('visit_id')->nullable()->constrained('visits')->onDelete('cascade');
+
+            $table->bigInteger('patient_id')->unsigned()->nullable();
+            $table->foreign('patient_id')->references('id')->on('patients')->onDelete('cascade');
+
+            $table->bigInteger('visit_id')->unsigned()->nullable();
+            $table->foreign('visit_id')->references('id')->on('visits')->onDelete('cascade');
+
+            $table->boolean('is_paid')->default(false); // Whether it's a co-pay scenario
+
+            $table->integer('facility_id')->nullable();
+            $table->foreign('facility_id')->references('id')->on('facilities')->onDelete('cascade');
             $table->timestamps();
         });
     }

@@ -16,6 +16,8 @@ return new class extends Migration
             $table->string('name'); // e.g., Consultation, Medication, Lab Test
             $table->decimal('amount', 10, 2); // The cost of the item
             $table->text('description')->nullable(); // Optional description
+            $table->integer('facility_id')->nullable();
+            $table->foreign('facility_id')->references('id')->on('facilities')->onDelete('cascade');
             $table->timestamps();
         });
 

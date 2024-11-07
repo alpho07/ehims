@@ -19,9 +19,11 @@ class CreateConsultationsTable extends Migration
             $table->foreignId('referred_to_id')->nullable()->constrained('clinics')->onDelete('set null');
             $table->string('reason_for_referral')->nullable();
             $table->foreignId('doctor_id')->nullable()->constrained('users')->onDelete('cascade')->onDelete('set null');
+            $table->integer('facility_id')->nullable();
+            $table->foreign('facility_id')->references('id')->on('facilities')->onDelete('cascade');
             $table->timestamps();
         });
-        
+
     }
 
     /**

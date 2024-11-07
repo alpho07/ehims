@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-class Patient extends Model
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+
+class Patient extends BaseModel
 {
     use HasFactory;
 
@@ -31,4 +31,7 @@ class Patient extends Model
     {
         return $this->hasMany(Payment::class);
     }
+
+
+  
 }
