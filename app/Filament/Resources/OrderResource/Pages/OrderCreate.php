@@ -116,7 +116,7 @@ class OrderCreate extends Page
 
                     HubFacilityInventory::create([
                         'item_id' => $data['inventory_product_id'],
-                        'facility_id' => 3,
+                        'facility_id' => $facilityId,
                         'available_quantity' => 0,
                     ]);
 
@@ -124,7 +124,11 @@ class OrderCreate extends Page
                         ->title('Product  Successfully Added')
                         ->success()
                         ->send();
-                    $this->form->fill(['orderItems' => $this->getOrderItems()]);
+
+                      return redirect(request()->header('Referer'));
+                    //$this->form->fill(['orderItems' => $this->getOrderItems()]);
+
+
                 }),
         ];
     }
@@ -246,7 +250,7 @@ class OrderCreate extends Page
             ->success()
             ->send();
 
-        return redirect(request()->header('Referer'));
+
     }
 
     protected static string $view = 'filament.resources.order-create';

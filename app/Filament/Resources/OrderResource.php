@@ -30,7 +30,14 @@ class OrderResource extends Resource
             ->schema([
                 Select::make('facility_id')
                     ->label('Facility')
-                    ->options(Facility::all()->pluck('facility_name', 'id'))
+                    ->options(Facility::query()->get()->mapWithKeys(function ($facility) {
+                        return [
+                            $facility->id => "{$facility->facility_name} - {$facility->mfl_code}",
+                        ];
+                    }))
+                    ->required()
+                    ->searchable()
+                    ->preload()
                     ->required()
                     ->reactive()
                     ->afterStateUpdated(fn($state, callable $set) => $set('inventory_items', $state)),
@@ -40,7 +47,16 @@ class OrderResource extends Resource
                     ->options([
                         1 => 'January',
                         2 => 'February',
-                        3 => 'March', // Continue for all months
+                        3 => 'March',
+                        4 => 'April',
+                        5 => 'May',
+                        6 => 'June',
+                        7 => 'July',
+                        8 => 'August',
+                        9 => 'September',
+                        10 => 'October',
+                        11 => 'November',
+                        12 => 'December',
                     ])
                     ->required(),
 
@@ -67,13 +83,23 @@ class OrderResource extends Resource
             ->filters([
                 SelectFilter::make('facility_id')
                     ->label('Facility')
-                    ->relationship('facility', 'facility_name'),
+                    ->relationship('facility', 'facility_name')
+                   ,
                 Tables\Filters\SelectFilter::make('month')
                     ->label('Month')
                     ->options([
                         1 => 'January',
                         2 => 'February',
-                        3 => 'March', // and so on
+                        3 => 'March',
+                        4 => 'April',
+                        5 => 'May',
+                        6 => 'June',
+                        7 => 'July',
+                        8 => 'August',
+                        9 => 'September',
+                        10 => 'October',
+                        11 => 'November',
+                        12 => 'December',
                     ]),
                 Tables\Filters\SelectFilter::make('year')
                     ->label('Year')
