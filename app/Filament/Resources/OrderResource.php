@@ -147,6 +147,7 @@ class OrderResource extends Resource
             'create' => Pages\CreateOrder::route('/create'),
             'edit' => Pages\EditOrder::route('/{record}/edit'),
             'order-create' => Pages\OrderCreate::route('/{OrderId}/{facilityId}/{month}/{year}/create-order'),
+            'order-api' => Pages\OrderApiManagementPage::route('/{facilityId}/{month}/{year}/v1'),
         ];
     }
 }

@@ -158,4 +158,7 @@ class Visit extends BaseModel
     {
         return $this->belongsTo(Facility::class);
     }
+
+
+   
 }

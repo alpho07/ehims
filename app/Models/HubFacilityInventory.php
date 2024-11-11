@@ -19,6 +19,11 @@ class HubFacilityInventory extends BaseModel
         return $this->belongsTo(InventoryProduct::class, 'item_id');
     }
 
+    public function items()
+    {
+        return $this->hasMany(PrescriptionOrderItem::class, 'inventory_product_id');
+    }
+
     public function getQuantityAvailableAttribute()
     {
         $facilityIds = \DB::table('facilities')

@@ -26,4 +26,17 @@ class Prescription extends Model
     {
         return $this->visit->consultation->form_data['prescription'] ?? [];
     }
+
+    // app/Models/Prescription.php
+
+    public function prescriptionOrder()
+    {
+        return $this->hasOne(PrescriptionOrder::class);
+    }
+
+
+    public function order()
+    {
+        return $this->hasOne(PrescriptionOrder::class);
+    }
 }
