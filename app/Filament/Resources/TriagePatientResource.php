@@ -24,11 +24,11 @@ class TriagePatientResource extends Resource
 
     protected static ?string $navigationGroup = 'Queue Management';
 
-    /*public static function shouldRegisterNavigation(): bool
+    public static function shouldRegisterNavigation(): bool
     {
         // Check if the user has permission to view any triage
         return Auth::user()->can('view_any_triage');
-    }*/
+    }
 
     public static function table(Tables\Table $table): Table
 {

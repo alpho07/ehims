@@ -58,8 +58,8 @@ class FacilityScope implements Scope
             return;
         }
 
-        // Doctors, Nurses, Pharmacists, and Receptionist (non-admin roles) can access data in their assigned hub or spoke
-        if (in_array('Doctor', $roles) || in_array('Nurse', $roles) || in_array('Pharmacy', $roles) || in_array('Receptionist', $roles)) {
+        //Inventory Manager,Hub Doctor, Doctors, Nurses, Pharmacists, and Receptionist (non-admin roles) can access data in their assigned hub or spoke
+        if (in_array('Inventory Manager', $roles) ||  in_array('Hub Doctor', $roles) || in_array('Cashier', $roles) ||  in_array('Doctor', $roles) || in_array('Nurse', $roles) || in_array('Pharmacy', $roles) || in_array('Receptionist', $roles)) {
             $builder->where($this->column, $facilityId);
             return;
         }

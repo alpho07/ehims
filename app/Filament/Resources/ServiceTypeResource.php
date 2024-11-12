@@ -24,11 +24,11 @@ class ServiceTypeResource extends Resource
 
 
 
-    /*public static function shouldRegisterNavigation(): bool
+    public static function shouldRegisterNavigation(): bool
     {
         // Check if the user has permission to view any appointments
         return Auth::user()->can('view_any_service_type');
-    }*/
+    }
 
     public static function form(Form $form): Form
     {

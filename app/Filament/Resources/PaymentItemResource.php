@@ -9,6 +9,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
+use Illuminate\Support\Facades\Auth;
 
 class PaymentItemResource extends Resource
 {
@@ -17,6 +18,16 @@ class PaymentItemResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-lifebuoy';
     protected static ?string $navigationLabel = 'Payment Items';
     protected static ?string $navigationGroup = 'Admin Management';
+
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        // Check if the user has permission to view any appointments
+        return Auth::user()->hasAnyPermission([
+            'view_any_payment::item',
+            // Add other permissions as needed
+        ]);
+    }
 
     public static function form(Form $form): Form
     {

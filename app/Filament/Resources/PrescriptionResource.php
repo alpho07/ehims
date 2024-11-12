@@ -10,14 +10,24 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 
 class PrescriptionResource extends Resource
 {
     protected static ?string $model = Prescription::class;
 
+
     protected static ?string $navigationIcon =  'heroicon-o-rectangle-stack';
     protected static ?string $navigationLabel = 'Prescriptions';
     protected static ?string $navigationGroup = 'Queue Management';
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        // Check if the user has permission to view any appointments
+        return Auth::user()->hasAnyPermission([
+            'view_any_prescription',
+        ]);
+    }
 
     public static function form(Form $form): Form
     {

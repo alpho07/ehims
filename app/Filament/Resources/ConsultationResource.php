@@ -15,6 +15,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Auth;
 
 class ConsultationResource extends Resource
 {
@@ -22,6 +23,15 @@ class ConsultationResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
     protected static ?string $navigationGroup = 'Others';
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        // Check if the user has permission to view any appointments
+        return Auth::user()->hasAnyPermission([
+            'view_any_patient',
+
+        ]);
+    }
 
     public static function form(Form $form): Form
     {
@@ -53,7 +63,7 @@ class ConsultationResource extends Resource
                     ->label('Consultation Date')
                     ->dateTime()
                     ->sortable(),
-               
+
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

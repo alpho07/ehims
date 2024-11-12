@@ -16,6 +16,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class HubFacilityInventoryResource extends Resource
 {
@@ -24,6 +25,16 @@ class HubFacilityInventoryResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
     protected static ?string $navigationGroup = 'Inventory Management';
     protected static ?string $navigationLabel = 'Facility Inventory';
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        // Check if the user has permission to view any appointments
+        return Auth::user()->hasAnyPermission([
+            'view_any_hub::facility::inventory',
+
+            // Add other permissions as needed
+        ]);
+    }
 
 
     public static function form(Form $form): Form
@@ -48,7 +59,9 @@ class HubFacilityInventoryResource extends Resource
                 Select::make('facility_id')
                     ->label('Facility')
                     ->options(Facility::query()->pluck('facility_name', 'id'))
-                    ->required(),
+                    ->required()
+                    ->searchable()
+                    ->preload(),
 
 
             ]);

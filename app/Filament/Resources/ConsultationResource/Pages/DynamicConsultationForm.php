@@ -417,7 +417,7 @@ class DynamicConsultationForm extends Page implements Forms\Contracts\HasForms
                 ->required(),
 
             Forms\Components\Select::make('formData.referred_to_id')
-                ->label('Refer to Clinic')
+                ->label('Send to')
                 ->options(
                     Clinic::all()->pluck('name', 'id')->filter(function ($name, $id) use ($currentClinicId) {
                         if ($id === $currentClinicId) {
@@ -466,17 +466,8 @@ class DynamicConsultationForm extends Page implements Forms\Contracts\HasForms
 
             Forms\Components\Select::make('formData.referred_to_id')
                 ->label('Refer to Clinic')
-                ->options(
-                    Clinic::all()->pluck('name', 'id')->filter(function ($name, $id) use ($currentClinicId) {
-                        if ($id === $currentClinicId) {
-                            return false;
-                        }
-                        if (str_contains(strtolower($name), 'hub') && $currentClinicId > 12) {
-                            return false;
-                        }
-                        return true;
-                    })
-                )
+                ->options(Clinic::all()->pluck('name', 'id')->toArray())
+
                 ->nullable()
                 ->required()
                 ->default($this->formData['referred_to_id'] ?? null),
@@ -563,7 +554,7 @@ class DynamicConsultationForm extends Page implements Forms\Contracts\HasForms
         if ($referredToId == 12) {
             $paymentExists = Payment::where('visit_id', $this->visit->id)
                 ->whereHas('paymentDetails', function ($query) {
-                    $query->where('payment_item_id', 3);  // Payment item for Refraction Clinic
+                    $query->where('payment_item_id', 5);  // Payment item for Refraction Clinic
                 })
                 ->exists();
 
@@ -589,7 +580,8 @@ class DynamicConsultationForm extends Page implements Forms\Contracts\HasForms
 
         $filterClinic = Clinic::where('id', $referredToId)->firstOrFail();
 
-        if ($this->visit->clinic_id === 12) {
+
+        if ($filterClinic->id == 13) {
             Prescription::create([
                 'visit_id' => $this->visit->id,
                 'clinic_id' => $this->visit->clinic_id,
@@ -597,6 +589,8 @@ class DynamicConsultationForm extends Page implements Forms\Contracts\HasForms
                 'status' => 'pending',
             ]);
         }
+
+       
 
         $this->visit->update([
             'clinic_id' => $filterClinic->id,

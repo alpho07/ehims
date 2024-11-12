@@ -4,6 +4,7 @@ namespace App\Models;
 
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Builder;
 
 
 class Visit extends BaseModel
@@ -30,6 +31,43 @@ class Visit extends BaseModel
         'previous_clinics' => 'array',
         'staff_seen' => 'array',
     ];
+
+
+    protected static function booted()
+    {
+        if (auth()->check()) {
+            $user = auth()->user();
+
+            // Apply different filters based on the user's role
+            if ($user->hasRole('Nurse')) {
+                static::addGlobalScope('nurseActiveStatus', function (Builder $builder) {
+                    $builder->where('status', 'active');
+                });
+            } elseif ($user->hasRole('Doctor')) {
+                static::addGlobalScope('doctorFilter', function (Builder $builder) {
+                    $builder->whereIn('status',
+                    [
+                        'Filter Clinic',
+                        'Anterior segment and glaucoma Clinic',
+                        'Low Vision Clinic',
+                        'Vitreoretinal (VR) Clinic',
+                        'Refraction Clinic'
+                  ]);
+                });
+            }
+            elseif ($user->hasRole('Hub Doctor')) {
+                static::addGlobalScope('doctorFilter', function (Builder $builder) {
+                    $builder->where('status','like', '%Hub%');
+                });
+            }
+            elseif ($user->hasRole('Receptionist')) {
+                static::addGlobalScope('receptionistFilter', function (Builder $builder) {
+                    // Define filtering logic specific to the Receptionist role, if any
+                });
+            }
+            // Add additional conditions for other roles as needed
+        }
+    }
 
     /**
      * Define the relationship between Visit and Patient.
@@ -160,5 +198,5 @@ class Visit extends BaseModel
     }
 
 
-   
+
 }

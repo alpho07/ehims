@@ -9,14 +9,22 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables\Table;
 use Filament\Tables;
-
-
+use Illuminate\Support\Facades\Auth;
 
 class QueueResource extends Resource
 {
     protected static ?string $model = Queue::class;
     protected static ?string $navigationIcon = 'heroicon-o-clock';
     protected static ?string $navigationGroup = 'Others';
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        // Check if the user has permission to view any appointments
+        return Auth::user()->hasAnyPermission([
+            'view_any_patient 1',
+
+        ]);
+    }
 
 
 

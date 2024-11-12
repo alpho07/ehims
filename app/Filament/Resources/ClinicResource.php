@@ -20,13 +20,17 @@ class ClinicResource extends Resource
     protected static ?string $model = Clinic::class;
     protected static ?string $navigationIcon = 'heroicon-o-home-modern';
     protected static ?string $navigationGroup = 'Admin Management';
-   
+
 
 
     public static function shouldRegisterNavigation(): bool
     {
         // Check if the user has permission to view any appointments
-        return Auth::user()->can('view_any_clinic');
+        return Auth::user()->hasAnyPermission([
+            'view_any_clinic',
+
+            // Add other permissions as needed
+        ]);
     }
 
     public static function form(Form $form): Form

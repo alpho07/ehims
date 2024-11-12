@@ -27,7 +27,11 @@ class AppointmentResource extends Resource
     public static function shouldRegisterNavigation(): bool
     {
         // Check if the user has permission to view any appointments
-        return Auth::user()->can('view_any_appointment');
+        return Auth::user()->hasAnyPermission([
+            'view_any_patient',
+            'view_any_appointments',
+            // Add other permissions as needed
+        ]);
     }
 
     public static function form(Form $form): Form

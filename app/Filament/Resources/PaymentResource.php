@@ -21,6 +21,7 @@ use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BooleanColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 
 class PaymentResource extends Resource
 {
@@ -33,6 +34,15 @@ class PaymentResource extends Resource
     protected static ?string $navigationGroup = 'Payment Management';
 
     protected static ?int $navigationSort = -3;
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        // Check if the user has permission to view any appointments
+        return Auth::user()->hasAnyPermission([
+            'view_any_payment',
+            // Add other permissions as needed
+        ]);
+    }
 
 
     public static function form(Forms\Form $form): Forms\Form

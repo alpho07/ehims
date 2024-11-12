@@ -11,7 +11,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-
+use Illuminate\Support\Facades\Auth;
 
 class InventoryProductsResource extends Resource
 {
@@ -20,6 +20,16 @@ class InventoryProductsResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
     protected static ?string $navigationGroup = 'Inventory Management';
     protected static ?string $navigationLabel = 'Inventory Products';
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        // Check if the user has permission to view any appointments
+        return Auth::user()->hasAnyPermission([
+            'view_any_hub::facility::inventory',
+
+            // Add other permissions as needed
+        ]);
+    }
 
     public static function form(Form $form): Form
     {
@@ -45,7 +55,7 @@ class InventoryProductsResource extends Resource
                 TextColumn::make('system_code')->sortable()->searchable(),
                 TextColumn::make('gender')->sortable(),
                 TextColumn::make('price')->sortable(),
-               
+
             ])
             ->filters([
                 //

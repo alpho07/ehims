@@ -30,7 +30,7 @@ class DrugResource extends Resource
     public static function shouldRegisterNavigation(): bool
     {
         // Check if the user has permission to view any appointments
-        return Auth::user()->can('view_any_drug');
+        return Auth::user()->can('view_any_drug1');
     }
 
     public static function form(Form $form): Form

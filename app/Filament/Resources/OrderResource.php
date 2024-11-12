@@ -15,6 +15,7 @@ use Filament\Tables\Actions\Action;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use GuzzleHttp\Psr7\Request;
+use Illuminate\Support\Facades\Auth;
 
 class OrderResource extends Resource
 {
@@ -23,6 +24,16 @@ class OrderResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
     protected static ?string $navigationGroup = 'Inventory Management';
     protected static ?string $navigationLabel = 'Facility Orders';
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        // Check if the user has permission to view any appointments
+        return Auth::user()->hasAnyPermission([
+            'view_any_hub::facility::inventory',
+
+            // Add other permissions as needed
+        ]);
+    }
 
     public static function form(Form $form): Form
     {
